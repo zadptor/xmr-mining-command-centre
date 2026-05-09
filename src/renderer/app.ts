@@ -36,6 +36,12 @@ type AppWindow = Window & {
   daemonApi?: DaemonApi;
 };
 
+declare const PIXI: any;
+
+type SceneState = UiStatus["state"] | "starting" | "error";
+type SpriteDirection = "north" | "south" | "east" | "west" | "south-east" | "south-west";
+type SpritePhase = "idle" | "walking" | "mining-action" | "celebrating";
+
 const appWindow = window as AppWindow;
 
 const statusEl = document.getElementById("status") as HTMLParagraphElement;
@@ -60,6 +66,389 @@ const metricMiningThreads = document.getElementById("miningThreads") as HTMLSpan
 const MAX_LOG_LINES = 120;
 const logs: string[] = [];
 const DEFAULT_STATUS = "Status: idle";
+
+class MiningSpriteScene {
+  private readonly basePath = "./assets/miner-character";
+  private readonly idleKey = "stand_idle";
+  private readonly walkKey = "walking";
+  private readonly mineKey = "mining_action";
+  private readonly celebrateKey = "gold_found";
+  private readonly miningActionDurationMs = 10000;
+  private app: any;
+  private world: any;
+  private sprite: any;
+  private shadow: any;
+  private oreNodes: any[] = [];
+  private activeOreNode: any;
+  private oreGlow: any;
+  private textures = new Map<string, any[]>();
+  private state: SceneState = "idle";
+  private phase: SpritePhase = "idle";
+  private currentAnimation = "";
+  private targetX = 0;
+  private targetY = 0;
+  private actionMs = 0;
+  private ready = false;
+  private lastDirection: SpriteDirection = "south";
+  private nextMiningDirection: "east" | "west" = "east";
+
+  constructor(private readonly host: HTMLElement) {
+    void this.init();
+  }
+
+  playState(state: SceneState): void {
+    if (!this.ready) {
+      this.state = state;
+      return;
+    }
+
+    if (state === this.state && state === "mining" && this.phase !== "idle") {
+      return;
+    }
+
+    this.state = state;
+
+    if (state === "block-found") {
+      this.phase = "celebrating";
+      this.centerSprite();
+      this.play("celebrate:south", 0.16);
+      return;
+    }
+
+    if (state === "mining") {
+      this.nextMiningDirection = "east";
+      this.beginMiningWalk("east");
+      return;
+    }
+
+    if (state === "starting") {
+      this.beginMiningWalk("east");
+      return;
+    }
+
+    this.phase = "idle";
+    this.play("idle:south", 0.08);
+  }
+
+  private async init(): Promise<void> {
+    if (typeof PIXI === "undefined") {
+      console.warn("[UI] PixiJS not loaded; sprite scene unavailable");
+      return;
+    }
+
+    this.app = new PIXI.Application();
+    await this.app.init({
+      resizeTo: this.host,
+      backgroundAlpha: 0,
+      antialias: false,
+      autoDensity: true,
+      resolution: Math.min(window.devicePixelRatio || 1, 2)
+    });
+
+    this.host.appendChild(this.app.canvas);
+    this.world = new PIXI.Container();
+    this.app.stage.addChild(this.world);
+    this.shadow = new PIXI.Graphics();
+    this.app.stage.addChild(this.shadow);
+
+    await this.loadTextures();
+    this.buildMineBackground();
+
+    this.sprite = new PIXI.AnimatedSprite(this.textures.get("idle:south"));
+    this.sprite.anchor.set(0.5, 1);
+    this.sprite.scale.set(2.65);
+    this.sprite.animationSpeed = 0.08;
+    this.sprite.play();
+    this.app.stage.addChild(this.sprite);
+
+    this.centerSprite();
+    this.ready = true;
+    this.playState(this.state);
+    this.app.ticker.add((ticker: { deltaMS: number }) => this.update(ticker.deltaMS));
+    new ResizeObserver(() => {
+      this.buildMineBackground();
+      if (this.state === "idle" || this.state === "block-found") {
+        this.centerSprite();
+      }
+    }).observe(this.host);
+  }
+
+  private async loadTextures(): Promise<void> {
+    await this.setTextures("idle:south", this.animationPaths(this.idleKey, 9));
+
+    for (const direction of ["east", "west"] as const) {
+      await this.setTextures("walk:" + direction, this.framePaths(this.walkKey, direction, 9));
+    }
+
+    for (const direction of ["east", "west"] as const) {
+      await this.setTextures("mine:" + direction, this.framePaths(this.mineKey, direction, 9));
+    }
+
+    await this.setTextures("celebrate:south", this.framePaths(this.celebrateKey, "south", 9));
+  }
+
+  private buildMineBackground(): void {
+    if (!this.world) {
+      return;
+    }
+
+    for (const child of this.world.removeChildren()) {
+      child.destroy();
+    }
+
+    const width = Math.max(320, this.host.clientWidth);
+    const height = Math.max(220, this.host.clientHeight);
+    const floorY = height - 74;
+    const ceilingY = Math.max(28, height * 0.1);
+    const backWallY = Math.max(76, height * 0.32);
+
+    this.addRect(0, 0, width, height, 0x0b0d12);
+    this.addRect(0, ceilingY, width, floorY - ceilingY + 28, 0x171820);
+    this.addRect(0, floorY - 16, width, height - floorY + 16, 0x241d1a);
+
+    for (let x = 0; x < width; x += 32) {
+      const offset = (x / 32) % 3;
+      this.addRect(x, ceilingY + offset * 8, 32, 24, offset === 1 ? 0x20222c : 0x151722);
+      this.addRect(x, floorY + (offset === 2 ? 10 : 0), 32, 28, offset === 0 ? 0x332922 : 0x2a221e);
+    }
+
+    for (let x = -24; x < width; x += 96) {
+      const y = backWallY + (x % 2 === 0 ? -10 : 8);
+      this.addRockCluster(x, y, 0x22242e, 0x11131a);
+    }
+
+    this.addRect(0, floorY - 6, width, 8, 0x4a392f);
+    this.addRect(0, floorY + 2, width, 6, 0x17120f);
+
+    this.addLamp(92, floorY - 96);
+    this.addLamp(width - 124, floorY - 96);
+
+    this.oreGlow = new PIXI.Graphics();
+    this.world.addChild(this.oreGlow);
+
+    this.oreNodes = [
+      this.addGemCluster("west-gems", 38, floorY - 34, 0x42d9ff, 0xa855f7),
+      this.addGemCluster("east-gems", width - 92, floorY - 34, 0xffc247, 0x34f5c5)
+    ];
+    this.activeOreNode = this.oreNodes[0];
+
+    this.drawOreGlow();
+  }
+
+  private addRect(x: number, y: number, width: number, height: number, color: number, alpha = 1): any {
+    const rect = new PIXI.Graphics();
+    rect.rect(Math.round(x), Math.round(y), Math.round(width), Math.round(height));
+    rect.fill({ color, alpha });
+    this.world.addChild(rect);
+    return rect;
+  }
+
+  private addRockCluster(x: number, y: number, color: number, shade: number): void {
+    this.addRect(x, y + 24, 56, 32, shade, 0.8);
+    this.addRect(x + 8, y + 8, 64, 32, color, 0.84);
+    this.addRect(x + 32, y, 40, 24, 0x2c2e39, 0.72);
+    this.addRect(x + 16, y + 18, 16, 8, 0x353744, 0.72);
+    this.addRect(x + 48, y + 30, 12, 8, 0x101218, 0.64);
+  }
+
+  private addLamp(x: number, y: number): void {
+    const glow = new PIXI.Graphics();
+    glow.circle(x + 8, y + 22, 118);
+    glow.fill({ color: 0xffbf5f, alpha: 0.16 });
+    glow.circle(x + 8, y + 22, 62);
+    glow.fill({ color: 0xffd27a, alpha: 0.22 });
+    this.world.addChild(glow);
+
+    this.addRect(x - 6, y + 34, 28, 10, 0x5b3a24);
+    this.addRect(x + 2, y + 44, 12, 72, 0x3a2619);
+    this.addRect(x - 18, y + 112, 52, 10, 0x241711);
+    this.addRect(x - 2, y + 8, 20, 24, 0x19110c);
+    this.addRect(x + 2, y + 12, 12, 16, 0xffd166);
+    this.addRect(x + 4, y + 14, 8, 10, 0xfff0a3);
+  }
+
+  private addGemCluster(
+    label: string,
+    x: number,
+    y: number,
+    primary: number,
+    secondary: number
+  ): any {
+    const cluster = new PIXI.Graphics();
+    cluster.label = label;
+    cluster.x = Math.round(x);
+    cluster.y = Math.round(y);
+
+    cluster.rect(0, 24, 54, 8);
+    cluster.fill({ color: 0x151013, alpha: 0.62 });
+    cluster.rect(4, 12, 10, 18);
+    cluster.fill({ color: primary, alpha: 0.92 });
+    cluster.rect(10, 6, 8, 24);
+    cluster.fill({ color: secondary, alpha: 0.94 });
+    cluster.rect(22, 10, 12, 20);
+    cluster.fill({ color: primary, alpha: 0.82 });
+    cluster.rect(36, 14, 8, 16);
+    cluster.fill({ color: secondary, alpha: 0.86 });
+    cluster.rect(12, 8, 4, 6);
+    cluster.fill({ color: 0xffffff, alpha: 0.7 });
+    cluster.rect(26, 12, 4, 6);
+    cluster.fill({ color: 0xffffff, alpha: 0.54 });
+
+    this.world.addChild(cluster);
+    return cluster;
+  }
+
+  private async setTextures(key: string, paths: string[]): Promise<void> {
+    const textures = await Promise.all(paths.map((path) => PIXI.Assets.load(path)));
+    for (const texture of textures) {
+      if (texture?.source) {
+        texture.source.scaleMode = "nearest";
+      }
+    }
+    this.textures.set(key, textures);
+  }
+
+  private framePaths(animation: string, direction: string, count: number): string[] {
+    return Array.from({ length: count }, (_value, index) => {
+      return `${this.basePath}/animations/${animation}/${direction}/frame_${String(index).padStart(3, "0")}.png`;
+    });
+  }
+
+  private animationPaths(animation: string, count: number): string[] {
+    return Array.from({ length: count }, (_value, index) => {
+      return `${this.basePath}/animations/${animation}/frame_${String(index).padStart(3, "0")}.png`;
+    });
+  }
+
+  private play(key: string, speed: number): void {
+    if (!this.sprite || this.currentAnimation === key) {
+      return;
+    }
+
+    const textures = this.textures.get(key);
+    if (!textures || textures.length === 0) {
+      return;
+    }
+
+    this.currentAnimation = key;
+    this.sprite.textures = textures;
+    this.sprite.animationSpeed = speed;
+    this.sprite.gotoAndPlay(0);
+  }
+
+  private update(deltaMs: number): void {
+    if (!this.ready || !this.sprite) {
+      return;
+    }
+
+    if (this.state === "mining" || this.state === "starting") {
+      this.updateMovement(deltaMs);
+    }
+
+    if (this.state === "block-found") {
+      this.sprite.y = this.groundY() - 16 + Math.sin(performance.now() / 150) * 8;
+    }
+
+    if (this.phase === "mining-action" || this.state === "block-found") {
+      this.drawOreGlow();
+    }
+
+    this.drawShadow();
+  }
+
+  private updateMovement(deltaMs: number): void {
+    if (this.phase === "mining-action") {
+      this.actionMs -= deltaMs;
+      if (this.actionMs <= 0) {
+        this.beginMiningWalk(this.nextMiningDirection);
+      }
+      return;
+    }
+
+    const dx = this.targetX - this.sprite.x;
+    const dy = this.targetY - this.sprite.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance < 4) {
+      if (this.state === "mining") {
+        this.startMiningAction(this.lastDirection === "west" ? "west" : "east");
+      } else {
+        this.phase = "idle";
+        this.play("idle:south", 0.08);
+      }
+      return;
+    }
+
+    const speed = this.state === "mining" ? 72 : 42;
+    const step = Math.min(distance, speed * deltaMs / 1000);
+    this.sprite.x += dx / distance * step;
+    this.sprite.y += dy / distance * step;
+  }
+
+  private beginMiningWalk(direction: "east" | "west"): void {
+    this.phase = "walking";
+    this.lastDirection = direction;
+    this.targetX = direction === "east" ? this.bounds().right : this.bounds().left;
+    this.targetY = this.groundY();
+    this.play("walk:" + direction, 0.18);
+  }
+
+  private startMiningAction(direction: "east" | "west"): void {
+    this.phase = "mining-action";
+    this.actionMs = this.miningActionDurationMs;
+    this.nextMiningDirection = direction === "east" ? "west" : "east";
+    this.activeOreNode = this.oreNodes.find((node) => node.label === `${direction}-gems`) ?? this.activeOreNode;
+    this.play("mine:" + direction, 0.21);
+    this.drawOreGlow();
+  }
+
+  private centerSprite(): void {
+    if (!this.sprite) {
+      return;
+    }
+    this.sprite.x = this.host.clientWidth / 2;
+    this.sprite.y = this.groundY();
+  }
+
+  private groundY(): number {
+    return Math.max(150, this.host.clientHeight - 52);
+  }
+
+  private bounds(): { left: number; right: number; top: number; bottom: number } {
+    const width = Math.max(320, this.host.clientWidth);
+    const height = Math.max(220, this.host.clientHeight);
+    return {
+      left: 86,
+      right: width - 86,
+      top: Math.max(94, height * 0.34),
+      bottom: height - 50
+    };
+  }
+
+  private drawShadow(): void {
+    this.shadow.clear();
+    this.shadow.ellipse(this.sprite.x, this.groundY() + 4, 40, 9);
+    this.shadow.fill({ color: 0x000000, alpha: this.state === "block-found" ? 0.18 : 0.28 });
+  }
+
+  private drawOreGlow(): void {
+    if (!this.oreGlow || !this.activeOreNode) {
+      return;
+    }
+
+    const pulse = this.phase === "mining-action"
+      ? 0.24 + Math.sin(performance.now() / 90) * 0.08
+      : this.state === "block-found"
+        ? 0.34 + Math.sin(performance.now() / 120) * 0.08
+        : 0.16;
+    const isEastGems = this.activeOreNode.label === "east-gems";
+    this.oreGlow.clear();
+    this.oreGlow.circle(this.activeOreNode.x + 26, this.activeOreNode.y + 16, this.phase === "mining-action" ? 74 : 46);
+    this.oreGlow.fill({ color: isEastGems ? 0xffc247 : 0x44d9ff, alpha: pulse });
+  }
+}
+
+const spriteScene = new MiningSpriteScene(document.getElementById("spriteStage") as HTMLDivElement);
+
 appendLog("INFO: UI script booting...");
 
 function getDaemonApi(): DaemonApi | null {
@@ -77,6 +466,7 @@ function logClient(level: "INFO" | "WARN" | "ERROR", message: string): void {
 
 function showError(message: string): void {
   document.body.dataset.state = "error";
+  spriteScene.playState("error");
   statusEl.textContent = `Status: error | ${message}`;
   actionFeedbackEl.textContent = message;
   actionFeedbackEl.classList.add("error");
@@ -118,6 +508,7 @@ function appendLog(line: string): void {
 
 function applyStatus(status: UiStatus): void {
   document.body.dataset.state = status.state;
+  spriteScene.playState(status.state);
   bridgeBannerEl.hidden = true;
   statusEl.textContent = `Status: ${status.state} | ${status.logLine}`;
   metricHeight.textContent = String(status.height);
@@ -187,6 +578,7 @@ function showMissingBridge(): void {
   }
 
   document.body.dataset.state = "starting";
+  spriteScene.playState("starting");
   statusEl.textContent = "Status: starting | start_mining request in progress";
   showAction("Starting mining request...");
   await runWithButtonState(button, async () => {
