@@ -19,6 +19,7 @@ type UiStatus = {
 
 const rpc = new MoneroDaemonRpc();
 let mainWindow: BrowserWindow | null = null;
+let statusPollTimer: NodeJS.Timeout | null = null;
 let lastHeight = 0;
 let miningExpected = false;
 let lastStatus: UiStatus | null = null;
@@ -93,6 +94,16 @@ function createWindow(): void {
   mainWindow.webContents.on("did-fail-load", (_event, errorCode, errorDescription, validatedURL) => {
     log("ERROR", "MAIN", `Renderer failed to load ${validatedURL}: ${errorCode} ${errorDescription}`);
   });
+  mainWindow.on("closed", () => {
+    mainWindow = null;
+  });
+}
+
+function stopStatusPolling(): void {
+  if (statusPollTimer) {
+    clearInterval(statusPollTimer);
+    statusPollTimer = null;
+  }
 }
 
 app.whenReady().then(() => {
@@ -172,7 +183,7 @@ app.whenReady().then(() => {
     log(level, "UI", message);
   });
 
-  setInterval(async () => {
+  statusPollTimer = setInterval(async () => {
     try {
       const status = await pollStatus();
       mainWindow?.webContents.send("daemon:status", status);
@@ -184,7 +195,13 @@ app.whenReady().then(() => {
   }, 5000);
 });
 
+app.on("before-quit", () => {
+  stopStatusPolling();
+});
+
 app.on("window-all-closed", () => {
+  log("INFO", "MAIN", "All windows closed; stopping status polling.");
+  stopStatusPolling();
   if (process.platform !== "darwin") {
     app.quit();
   }
