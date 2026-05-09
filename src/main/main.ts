@@ -20,7 +20,6 @@ type UiStatus = {
 const rpc = new MoneroDaemonRpc();
 let mainWindow: BrowserWindow | null = null;
 let lastHeight = 0;
-let lastBlockFoundAt = 0;
 let miningExpected = false;
 let lastStatus: UiStatus | null = null;
 const logLines: string[] = [];
@@ -43,16 +42,11 @@ async function pollStatus(): Promise<UiStatus> {
     rpc.getInfo(),
     rpc.getMiningStatus()
   ]);
-  const now = Date.now();
   miningExpected = miningStatus.active;
   let state: UiStatus["state"] = miningStatus.active ? "mining" : "idle";
 
   if (miningExpected && lastHeight > 0 && info.height > lastHeight) {
-    state = "block-found";
-    lastBlockFoundAt = now;
     log("INFO", "MAIN", `New block height detected: ${lastHeight} -> ${info.height}`);
-  } else if (lastBlockFoundAt > 0 && now - lastBlockFoundAt < 5000) {
-    state = "block-found";
   }
 
   lastHeight = info.height;
