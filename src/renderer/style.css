@@ -1,0 +1,1037 @@
+:root {
+  --void: #030405;
+  --charcoal: #0b0f14;
+  --obsidian: #111821;
+  --panel: rgba(14, 18, 24, 0.9);
+  --panel-hot: rgba(255, 102, 25, 0.12);
+  --line: #2b3542;
+  --line-hot: #ff7a21;
+  --text: #f8efe2;
+  --muted: #9fa8a7;
+  --xmr: #f26822;
+  --amber: #ffc857;
+  --gold: #f8c84b;
+  --green: #59d86f;
+  --red: #ff5d5d;
+  --cyan: #69e8f0;
+  --skin: #d99457;
+  --blue: #1d83ff;
+  --boot: #20242b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding: 22px;
+  color: var(--text);
+  font-family: "Lucida Console", "Courier New", monospace;
+  background:
+    radial-gradient(circle at 72% 8%, rgba(242, 104, 34, 0.22), transparent 22rem),
+    radial-gradient(circle at 14% 26%, rgba(105, 232, 240, 0.12), transparent 24rem),
+    linear-gradient(135deg, #030405 0%, #10151c 48%, #1c130d 100%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
+  background-size: 18px 18px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.9), transparent 86%);
+}
+
+.app {
+  position: relative;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 22px;
+  background:
+    linear-gradient(180deg, rgba(18, 23, 31, 0.96), rgba(7, 9, 12, 0.96)),
+    var(--charcoal);
+  border: 2px solid #29313c;
+  border-radius: 22px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+}
+
+.app::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 0 80px rgba(242, 104, 34, 0.08);
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 14px;
+}
+
+.brand-lockup {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.brand-mark {
+  width: clamp(58px, 8vw, 88px);
+  height: clamp(58px, 8vw, 88px);
+  filter: drop-shadow(0 0 18px rgba(242, 104, 34, 0.45));
+}
+
+.eyebrow {
+  margin: 0 0 7px;
+  color: var(--xmr);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(32px, 5.8vw, 62px);
+  line-height: 0.94;
+  letter-spacing: -0.07em;
+  text-shadow: 4px 4px 0 #000;
+}
+
+.status-card {
+  min-width: min(100%, 390px);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, rgba(242, 104, 34, 0.1), rgba(11, 16, 22, 0.92));
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.24);
+}
+
+#status {
+  margin: 0;
+  line-height: 1.45;
+}
+
+.status-light {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  background: var(--muted);
+  border: 2px solid #05070a;
+  box-shadow: 0 0 0 3px rgba(159, 168, 167, 0.12);
+}
+
+body[data-state="starting"] .status-light {
+  background: var(--amber);
+  box-shadow: 0 0 22px rgba(255, 200, 87, 0.55);
+  animation: pulse 0.7s steps(2, end) infinite;
+}
+
+body[data-state="mining"] .status-light {
+  background: var(--green);
+  box-shadow: 0 0 26px rgba(89, 216, 111, 0.7);
+}
+
+body[data-state="block-found"] .status-light {
+  background: var(--xmr);
+  box-shadow: 0 0 30px rgba(242, 104, 34, 0.8);
+}
+
+body[data-state="error"] .status-light {
+  background: var(--red);
+  box-shadow: 0 0 24px rgba(255, 93, 93, 0.6);
+}
+
+.bridge-banner {
+  margin: 10px 0;
+  padding: 10px 12px;
+  color: #240706;
+  background: #ffb4a8;
+  border: 2px solid var(--red);
+  border-radius: 12px;
+  font-weight: 700;
+}
+
+.action-feedback {
+  min-height: 22px;
+  margin: 8px 0 14px;
+  color: #a7f2b4;
+}
+
+.action-feedback.error {
+  color: #ffb4b4;
+}
+
+.panel {
+  padding: 14px;
+  background: linear-gradient(180deg, var(--panel), rgba(8, 11, 15, 0.92));
+  border: 2px solid var(--line);
+  border-radius: 16px;
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.2);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.mining-controls {
+  border-color: rgba(242, 104, 34, 0.58);
+  background: linear-gradient(135deg, var(--panel-hot), rgba(8, 11, 15, 0.92));
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+input,
+button {
+  border: 2px solid #405164;
+  background: #070b10;
+  color: var(--text);
+  padding: 10px;
+  font: inherit;
+}
+
+input {
+  border-radius: 10px;
+}
+
+input:focus,
+button:focus-visible {
+  outline: 2px solid var(--amber);
+  outline-offset: 2px;
+}
+
+button {
+  cursor: pointer;
+  min-height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #253142, #111822);
+  border-color: #5a6b80;
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.34);
+  transition: transform 100ms ease, filter 100ms ease, border-color 140ms ease;
+}
+
+button:hover {
+  border-color: var(--line-hot);
+  filter: brightness(1.18);
+}
+
+button:active {
+  transform: translateY(2px);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.34);
+}
+
+button:disabled {
+  opacity: 0.58;
+  cursor: not-allowed;
+}
+
+#startMining {
+  color: #1a0900;
+  background: linear-gradient(180deg, #ffc46b, var(--xmr));
+  border-color: #ffd88c;
+  font-weight: 700;
+}
+
+.button-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  align-items: end;
+}
+
+.pixel-stage {
+  position: relative;
+  min-height: 340px;
+  margin: 16px 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 82% 24%, rgba(242, 104, 34, 0.3), transparent 13rem),
+    radial-gradient(circle at 27% 55%, rgba(105, 232, 240, 0.08), transparent 18rem),
+    linear-gradient(180deg, #090d13 0%, #06090e 48%, #0d1118 49%, #05070a 100%);
+  border: 1px solid rgba(149, 164, 184, 0.38);
+  border-radius: 20px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -28px 70px rgba(0, 0, 0, 0.54),
+    0 18px 48px rgba(0, 0, 0, 0.36);
+  isolation: isolate;
+}
+
+.mine-sky {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(242, 104, 34, 0.08), transparent 38%);
+  background-size: 24px 24px, 24px 24px, auto;
+  opacity: 0.58;
+  mask-image: linear-gradient(to bottom, #000 0%, rgba(0, 0, 0, 0.78) 56%, transparent 100%);
+}
+
+.pixel-stage::before {
+  content: "";
+  position: absolute;
+  inset: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.pixel-stage::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.05), transparent 16%, transparent 84%, rgba(255, 255, 255, 0.05)),
+    radial-gradient(circle at 50% 120%, rgba(0, 0, 0, 0.7), transparent 58%);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.stage-chrome {
+  position: absolute;
+  top: 26px;
+  left: 28px;
+  z-index: 6;
+  display: flex;
+  gap: 8px;
+}
+
+.stage-chrome span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(159, 168, 167, 0.42);
+  box-shadow: 0 0 18px rgba(159, 168, 167, 0.22);
+}
+
+.stage-chrome span:first-child {
+  background: var(--xmr);
+  box-shadow: 0 0 18px rgba(242, 104, 34, 0.45);
+}
+
+.stage-readout {
+  position: absolute;
+  top: 30px;
+  right: 32px;
+  z-index: 6;
+  display: grid;
+  gap: 5px;
+  max-width: 260px;
+  text-align: right;
+}
+
+.stage-readout span {
+  color: rgba(105, 232, 240, 0.72);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.stage-readout strong {
+  color: rgba(248, 239, 226, 0.88);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.hash-rain {
+  position: absolute;
+  inset: 76px 42px auto auto;
+  width: 310px;
+  height: 170px;
+  color: rgba(105, 232, 240, 0.36);
+  font-size: 12px;
+  overflow: hidden;
+  z-index: 1;
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 72%, transparent);
+}
+
+.hash-rain span {
+  position: absolute;
+  opacity: 0.22;
+  transform: translateY(54px);
+}
+
+.hash-rain span:nth-child(1) {
+  left: 12px;
+}
+
+.hash-rain span:nth-child(2) {
+  left: 74px;
+  animation-delay: -2s;
+}
+
+.hash-rain span:nth-child(3) {
+  left: 136px;
+  animation-delay: -3.4s;
+}
+
+.hash-rain span:nth-child(4) {
+  left: 196px;
+  animation-delay: -1.1s;
+}
+
+.miner {
+  position: absolute;
+  left: clamp(34px, 8vw, 104px);
+  bottom: 44px;
+  width: clamp(186px, 21vw, 240px);
+  height: clamp(186px, 21vw, 240px);
+  transform-origin: center bottom;
+  z-index: 3;
+}
+
+.gif-miner {
+  display: grid;
+  place-items: center;
+}
+
+.miner-glow {
+  position: absolute;
+  inset: -18px;
+  background:
+    radial-gradient(circle at 50% 46%, rgba(255, 198, 93, 0.34), transparent 46%),
+    radial-gradient(circle at 50% 50%, rgba(242, 104, 34, 0.18), transparent 66%);
+  border: 1px solid rgba(255, 200, 87, 0.22);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.gif-miner img {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 18px;
+  opacity: 0;
+  filter: saturate(1.32) contrast(1.14) brightness(0.92) drop-shadow(16px 22px 22px rgba(0, 0, 0, 0.5));
+  mix-blend-mode: multiply;
+}
+
+.miner::before {
+  content: "";
+  position: absolute;
+  left: 24%;
+  right: 16%;
+  bottom: 22%;
+  height: 42%;
+  border: 1px solid rgba(149, 164, 184, 0.28);
+  border-radius: 14px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 42%),
+    linear-gradient(180deg, rgba(34, 43, 55, 0.92), rgba(12, 16, 22, 0.96));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 18px 34px rgba(0, 0, 0, 0.4);
+}
+
+.miner::after {
+  content: "";
+  position: absolute;
+  left: 56%;
+  bottom: 48%;
+  width: 44%;
+  height: 7px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(248, 239, 226, 0.7), rgba(242, 104, 34, 0.78));
+  box-shadow: 0 0 18px rgba(242, 104, 34, 0.22);
+  transform: rotate(-30deg);
+  transform-origin: left center;
+}
+
+.ore-field {
+  position: absolute;
+  left: clamp(250px, 36vw, 472px);
+  right: 176px;
+  bottom: 58px;
+  height: 168px;
+  z-index: 2;
+}
+
+.mine-vein {
+  position: absolute;
+  display: block;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, rgba(255, 200, 87, 0.72), transparent);
+  box-shadow: 0 0 18px rgba(255, 200, 87, 0.26);
+  transform: rotate(-16deg);
+}
+
+.vein-a {
+  left: 62px;
+  bottom: 78px;
+  width: 120px;
+}
+
+.vein-b {
+  left: 190px;
+  bottom: 44px;
+  width: 86px;
+  transform: rotate(13deg);
+}
+
+.vein-c {
+  right: 38px;
+  bottom: 92px;
+  width: 94px;
+}
+
+.rock {
+  position: absolute;
+  bottom: 0;
+  display: block;
+  background: linear-gradient(150deg, #4b525d, #262b32 70%);
+  clip-path: polygon(0 100%, 18% 58%, 34% 68%, 52% 28%, 70% 46%, 82% 22%, 100% 100%);
+  filter: drop-shadow(10px 16px 18px rgba(0, 0, 0, 0.42));
+}
+
+.rock-a {
+  left: 0;
+  width: 260px;
+  height: 128px;
+}
+
+.rock-b {
+  left: 118px;
+  width: 230px;
+  height: 158px;
+  background: linear-gradient(150deg, #3a414b, #222730 70%);
+}
+
+.rock-c {
+  left: 260px;
+  width: 170px;
+  height: 96px;
+  background: linear-gradient(150deg, #5b626d, #30353d 70%);
+}
+
+.spark {
+  position: absolute;
+  display: block;
+  width: 8px;
+  height: 8px;
+  background: var(--amber);
+  opacity: 0;
+  box-shadow: 0 0 14px rgba(255, 200, 87, 0.8);
+}
+
+.spark-a {
+  left: 70px;
+  bottom: 104px;
+}
+
+.spark-b {
+  left: 150px;
+  bottom: 132px;
+}
+
+.spark-c {
+  left: 235px;
+  bottom: 86px;
+}
+
+.coin-orbit {
+  position: absolute;
+  right: clamp(38px, 8vw, 104px);
+  top: 82px;
+  width: 132px;
+  height: 132px;
+  display: grid;
+  place-items: center;
+  z-index: 3;
+}
+
+.coin-halo {
+  position: absolute;
+  inset: -14px;
+  border: 1px solid rgba(255, 200, 87, 0.42);
+  border-radius: 50%;
+  box-shadow: inset 0 0 18px rgba(255, 200, 87, 0.18), 0 0 22px rgba(242, 104, 34, 0.16);
+}
+
+.coin-halo::before,
+.coin-halo::after {
+  content: "";
+  position: absolute;
+  inset: 13px;
+  border: 1px solid rgba(255, 200, 87, 0.24);
+  border-radius: 50%;
+}
+
+.coin-halo::after {
+  inset: 27px;
+}
+
+.coin-logo {
+  width: 112px;
+  height: 112px;
+  padding: 6px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.16),
+    0 16px 42px rgba(0, 0, 0, 0.46);
+  filter: drop-shadow(0 0 20px rgba(242, 104, 34, 0.48));
+}
+
+.stage-floor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 112px;
+  background:
+    linear-gradient(90deg, transparent, rgba(105, 232, 240, 0.1), transparent),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent 32%),
+    #06090e;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 1;
+}
+
+body[data-state="mining"] .hash-rain span {
+  animation: hashFall 5.6s linear infinite;
+}
+
+body[data-state="mining"] .miner {
+  animation: minerLean 0.9s ease-in-out infinite;
+}
+
+body[data-state="mining"] .miner::before,
+body[data-state="mining"] .miner::after,
+body[data-state="block-found"] .miner::before,
+body[data-state="block-found"] .miner::after {
+  opacity: 0;
+}
+
+body[data-state="mining"] .miner-glow {
+  opacity: 0.74;
+  animation: minerGlow 1.2s ease-in-out infinite;
+}
+
+body[data-state="mining"] .gif-miner img {
+  opacity: 0.92;
+}
+
+body[data-state="mining"] .mine-vein {
+  animation: veinPulse 1.8s ease-in-out infinite;
+}
+
+body[data-state="mining"] .spark {
+  animation: sparkPop 0.72s steps(2, end) infinite;
+}
+
+body[data-state="mining"] .spark-b {
+  animation-delay: -0.24s;
+}
+
+body[data-state="mining"] .spark-c {
+  animation-delay: -0.48s;
+}
+
+body[data-state="mining"] .coin-orbit {
+  animation: coinFloat 2.4s ease-in-out infinite;
+}
+
+body[data-state="mining"] .coin-halo {
+  animation: haloSpin 8s linear infinite;
+}
+
+body[data-state="block-found"] .pixel-stage {
+  animation: blockSceneFlash 1.8s ease-out 1;
+}
+
+body[data-state="block-found"] .hash-rain span {
+  animation: hashBurst 1.15s ease-out infinite;
+}
+
+body[data-state="block-found"] .miner-glow {
+  opacity: 1;
+  animation: rewardGlow 0.75s ease-out infinite;
+}
+
+body[data-state="block-found"] .gif-miner img {
+  opacity: 0.95;
+}
+
+body[data-state="block-found"] .spark {
+  animation: rewardSpark 0.9s ease-out infinite;
+}
+
+body[data-state="block-found"] .spark-b {
+  animation-delay: -0.3s;
+}
+
+body[data-state="block-found"] .spark-c {
+  animation-delay: -0.6s;
+}
+
+body[data-state="block-found"] .mine-vein {
+  animation: rewardVein 0.75s ease-out infinite;
+}
+
+body[data-state="block-found"] .coin-orbit {
+  animation: rewardCoinLaunch 1.1s ease-in-out infinite;
+}
+
+body[data-state="block-found"] .coin-halo {
+  animation: rewardHaloBurst 1.1s ease-out infinite;
+}
+
+body[data-state="block-found"] .coin-logo {
+  animation: rewardPulse 0.35s steps(2, end) 8;
+}
+
+.miner.celebrate {
+  animation: celebrate 0.28s steps(2, end) 6;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.metrics div {
+  padding: 12px;
+  color: var(--muted);
+  background: #080c12;
+  border: 2px solid #283240;
+  border-radius: 14px;
+}
+
+.metrics span {
+  display: block;
+  margin-top: 6px;
+  color: var(--text);
+  font-size: 20px;
+}
+
+.console-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.console-header h2 {
+  margin: 0;
+  color: var(--cyan);
+  font-size: 16px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.log-panel {
+  min-height: 190px;
+  max-height: 300px;
+  overflow: auto;
+  margin: 10px 0 0;
+  padding: 12px;
+  color: #bdf7c6;
+  background: #030609;
+  border: 2px solid #283240;
+  border-radius: 14px;
+  box-shadow: inset 0 0 28px rgba(89, 216, 111, 0.08);
+}
+
+.flash-success {
+  animation: flashSuccess 360ms ease;
+}
+
+@keyframes swingPick {
+  0% {
+    transform: rotate(-18deg);
+  }
+  45% {
+    transform: rotate(27deg) translate(12px, 34px);
+  }
+  100% {
+    transform: rotate(-18deg);
+  }
+}
+
+@keyframes minerLean {
+  50% {
+    transform: translateY(-4px) scale(1.015);
+  }
+}
+
+@keyframes minerGlow {
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes veinPulse {
+  50% {
+    opacity: 0.42;
+    filter: brightness(1.4);
+  }
+}
+
+@keyframes sparkPop {
+  0%,
+  42% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.7);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(8px, -12px) scale(1.2);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(20px, -30px) scale(0.6);
+  }
+}
+
+@keyframes coinFloat {
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+@keyframes haloSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rewardPulse {
+  50% {
+    transform: scale(1.14);
+    filter: drop-shadow(0 0 32px rgba(255, 200, 87, 0.9));
+  }
+}
+
+@keyframes blockSceneFlash {
+  0% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -28px 70px rgba(0, 0, 0, 0.54),
+      0 18px 48px rgba(0, 0, 0, 0.36);
+  }
+  24% {
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 200, 87, 0.64),
+      inset 0 0 90px rgba(242, 104, 34, 0.38),
+      0 0 42px rgba(255, 200, 87, 0.24);
+  }
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      inset 0 -28px 70px rgba(0, 0, 0, 0.54),
+      0 18px 48px rgba(0, 0, 0, 0.36);
+  }
+}
+
+@keyframes hashBurst {
+  0% {
+    opacity: 0;
+    transform: translateY(96px) scale(0.92);
+  }
+  22% {
+    opacity: 1;
+    color: rgba(255, 200, 87, 0.82);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-38px) scale(1.04);
+  }
+}
+
+@keyframes rewardGlow {
+  50% {
+    transform: scale(1.1);
+    opacity: 0.78;
+  }
+}
+
+@keyframes rewardSpark {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.6) rotate(0deg);
+  }
+  24% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(34px, -58px) scale(1.35) rotate(90deg);
+  }
+}
+
+@keyframes rewardVein {
+  50% {
+    opacity: 1;
+    filter: brightness(2.2);
+    box-shadow: 0 0 26px rgba(255, 200, 87, 0.68);
+  }
+}
+
+@keyframes rewardCoinLaunch {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  40% {
+    transform: translateY(-28px) scale(1.12);
+  }
+}
+
+@keyframes rewardHaloBurst {
+  0% {
+    transform: scale(0.86) rotate(0deg);
+    opacity: 0.72;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.26) rotate(160deg);
+    opacity: 0.28;
+  }
+}
+
+@keyframes celebrate {
+  50% {
+    transform: translateY(-18px) rotate(-3deg);
+  }
+}
+
+@keyframes hashFall {
+  from {
+    transform: translateY(-42px);
+    opacity: 0;
+  }
+  15%,
+  70% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(210px);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes flashSuccess {
+  0% {
+    box-shadow: 0 0 0 0 rgba(89, 216, 111, 0.55);
+  }
+  100% {
+    box-shadow: 0 0 0 12px rgba(89, 216, 111, 0);
+  }
+}
+
+@media (max-width: 880px) {
+  .pixel-stage {
+    min-height: 360px;
+  }
+
+  .stage-readout {
+    max-width: 210px;
+  }
+
+  .ore-field {
+    left: 205px;
+    right: 30px;
+    transform: scale(0.82);
+    transform-origin: left bottom;
+  }
+
+  .coin-orbit {
+    top: 32px;
+  }
+}
+
+@media (max-width: 720px) {
+  body {
+    padding: 12px;
+  }
+
+  .app {
+    padding: 14px;
+  }
+
+  .hero {
+    flex-direction: column;
+  }
+
+  .brand-lockup {
+    align-items: flex-start;
+  }
+
+  .status-card {
+    min-width: 0;
+  }
+
+  .pixel-stage {
+    min-height: 430px;
+  }
+
+  .stage-readout {
+    left: 28px;
+    right: 28px;
+    top: 48px;
+    max-width: none;
+    text-align: left;
+  }
+
+  .hash-rain {
+    inset: 104px 18px auto auto;
+  }
+
+  .miner {
+    left: 20px;
+    width: 190px;
+    height: 190px;
+    transform-origin: left bottom;
+  }
+
+  .ore-field {
+    left: 145px;
+    right: 0;
+    transform: scale(0.62);
+    transform-origin: left bottom;
+  }
+
+  .coin-orbit {
+    right: 24px;
+    top: 92px;
+    transform: scale(0.82);
+  }
+}

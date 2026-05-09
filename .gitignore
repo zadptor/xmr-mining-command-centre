@@ -1,0 +1,16 @@
+node_modules/
+dist/
+out/
+coverage/
+release/
+release-app/
+release-build/
+release-current/
+release-current-next/
+release-final/
+release-packaged/
+.idea/
+*.log
+.env
+.DS_Store
+Thumbs.db

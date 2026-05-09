@@ -1,0 +1,27 @@
+{
+  "name": "monero-mine-central",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desktop GUI for Monero daemon mining controls with fun pixel animations.",
+  "main": "dist/main/main/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.main.json && tsc -p tsconfig.renderer.json && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/copy-renderer-assets.ps1",
+    "dist:win": "npm run build && electron-packager . \"Monero Mine Central\" --platform=win32 --arch=x64 --out=release-current --overwrite --ignore=\"^/(src|docs|scripts|release|release-build|release-app|release-packaged|release-final|release-current|\\.git|\\.idea)$\"",
+    "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
+    "dev": "npm run build && electron .",
+    "start": "electron ."
+  },
+  "keywords": [
+    "monero",
+    "mining",
+    "desktop",
+    "electron"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@electron/packager": "^20.0.0",
+    "@types/node": "^24.0.0",
+    "electron": "^37.0.0",
+    "typescript": "^5.9.0"
+  }
+}

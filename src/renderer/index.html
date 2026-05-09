@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Monero Mine Central</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body data-state="idle">
+    <main class="app">
+      <section class="hero">
+        <div class="brand-lockup">
+          <img class="brand-mark" src="./monero-xmr-logo.svg" alt="Monero logo" />
+          <div>
+          <p class="eyebrow">Daemon Control Room</p>
+          <h1>Monero Mine Central</h1>
+          </div>
+        </div>
+        <div class="status-card">
+          <span class="status-light" aria-hidden="true"></span>
+          <p id="status">Status: idle</p>
+        </div>
+      </section>
+      <div id="bridgeBanner" class="bridge-banner" hidden>
+        IPC bridge missing. Renderer loaded, but preload did not expose daemonApi.
+      </div>
+      <p id="actionFeedback" class="action-feedback" aria-live="polite"></p>
+
+      <section class="panel controls mining-controls">
+        <label>
+          Wallet Address
+          <input id="walletAddress" placeholder="4... (required for start_mining)" />
+        </label>
+        <label>
+          Threads
+          <input id="threads" type="number" min="1" max="128" value="2" />
+        </label>
+        <div class="button-row">
+          <button id="startMining">Start Mining</button>
+          <button id="stopMining">Stop Mining</button>
+          <button id="refresh">Refresh Status</button>
+        </div>
+      </section>
+
+      <section class="panel controls">
+        <label>
+          Limit Down (kB/s)
+          <input id="limitDown" type="number" value="2048" />
+        </label>
+        <label>
+          Limit Up (kB/s)
+          <input id="limitUp" type="number" value="2048" />
+        </label>
+        <div class="button-row">
+          <button id="setLimit">Apply Limit</button>
+        </div>
+      </section>
+
+      <div class="pixel-stage" aria-label="Animated Monero mining scene">
+        <div class="mine-sky" aria-hidden="true"></div>
+        <div class="stage-chrome" aria-hidden="true">
+          <span></span>
+          <span></span>
+          <span></span>
+        </div>
+        <div class="stage-readout" aria-hidden="true">
+          <span>Daemon linked</span>
+          <strong>RandomX mining deck</strong>
+        </div>
+        <div class="hash-rain" aria-hidden="true">
+          <span>0x8b70</span>
+          <span>rx/0</span>
+          <span>nonce</span>
+          <span>hash</span>
+        </div>
+        <div id="miner" class="miner gif-miner" aria-label="Animated miner">
+          <span class="miner-glow" aria-hidden="true"></span>
+          <img src="./assets/mining.gif" alt="Animated miner swinging a pickaxe" />
+        </div>
+        <div class="ore-field" aria-hidden="true">
+          <span class="mine-vein vein-a"></span>
+          <span class="mine-vein vein-b"></span>
+          <span class="mine-vein vein-c"></span>
+          <span class="rock rock-a"></span>
+          <span class="rock rock-b"></span>
+          <span class="rock rock-c"></span>
+          <span class="spark spark-a"></span>
+          <span class="spark spark-b"></span>
+          <span class="spark spark-c"></span>
+        </div>
+        <div id="ore" class="coin-orbit" aria-label="Monero coin">
+          <span class="coin-halo"></span>
+          <img class="coin-logo" src="./monero-xmr-logo.svg" alt="" />
+        </div>
+        <div class="stage-floor" aria-hidden="true"></div>
+      </div>
+
+      <section class="metrics" aria-label="Daemon metrics">
+        <div>Height: <span id="height">-</span></div>
+        <div>Target: <span id="targetHeight">-</span></div>
+        <div>Difficulty: <span id="difficulty">-</span></div>
+        <div>Tx Pool: <span id="txPool">-</span></div>
+        <div>Peers: <span id="peers">-</span></div>
+        <div>Mining Speed: <span id="miningSpeed">-</span></div>
+        <div>Mining Threads: <span id="miningThreads">-</span></div>
+      </section>
+
+      <section class="console-header">
+        <h2>Runtime Console</h2>
+        <button id="clearLogs" type="button">Clear Console</button>
+      </section>
+      <pre id="logPanel" class="log-panel"></pre>
+    </main>
+    <script src="./app.js"></script>
+  </body>
+</html>
