@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Monero Mine Central</title>
+    <title>XMR Mining Command Centre</title>
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body data-state="idle">
@@ -12,8 +12,8 @@
         <div class="brand-lockup">
           <img class="brand-mark" src="./monero-xmr-logo.svg" alt="Monero logo" />
           <div>
-          <p class="eyebrow">Daemon Control Room</p>
-          <h1>Monero Mine Central</h1>
+            <p class="eyebrow">Command Centre</p>
+            <h1>XMR Mining Command Centre</h1>
           </div>
         </div>
         <div class="status-card">
@@ -21,6 +21,7 @@
           <p id="status">Status: idle</p>
         </div>
       </section>
+
       <div id="bridgeBanner" class="bridge-banner" hidden>
         IPC bridge missing. Renderer loaded, but preload did not expose daemonApi.
       </div>
@@ -56,61 +57,451 @@
         </div>
       </section>
 
-      <div class="pixel-stage" aria-label="Animated Monero mining scene">
-        <div class="mine-sky" aria-hidden="true"></div>
+      <!-- Mining Scene -->
+      <div class="mine-stage" aria-label="Mining scene animation">
         <div class="stage-chrome" aria-hidden="true">
-          <span></span>
-          <span></span>
-          <span></span>
+          <span></span><span></span><span></span>
         </div>
-        <div class="stage-readout" aria-hidden="true">
-          <span>Daemon linked</span>
-          <strong>RandomX mining deck</strong>
+        <div class="stage-readout" id="stageReadout" aria-hidden="true">
+          <span class="readout-label">Daemon Linked</span>
+          <strong class="readout-state">Idle</strong>
         </div>
-        <div class="hash-rain" aria-hidden="true">
-          <span>0x8b70</span>
-          <span>rx/0</span>
-          <span>nonce</span>
-          <span>hash</span>
+
+        <div id="miner" class="scene-wrap" aria-hidden="true">
+          <svg class="mine-svg" viewBox="0 0 820 300" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <!-- Cave wall gradient -->
+              <linearGradient id="caveWall" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#0d1218"/>
+                <stop offset="100%" stop-color="#060a0f"/>
+              </linearGradient>
+              <!-- Ground gradient -->
+              <linearGradient id="groundGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#141b24"/>
+                <stop offset="100%" stop-color="#0a0f15"/>
+              </linearGradient>
+              <!-- Rock gradient -->
+              <linearGradient id="rockGrad" x1="0.2" y1="0" x2="0.8" y2="1">
+                <stop offset="0%" stop-color="#555f6e"/>
+                <stop offset="60%" stop-color="#3c4452"/>
+                <stop offset="100%" stop-color="#252c38"/>
+              </linearGradient>
+              <!-- Gem glow filter -->
+              <filter id="gemGlow" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="6" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <!-- Lamp glow -->
+              <filter id="lampGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="4" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <!-- Soft shadow -->
+              <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="2" dy="4" stdDeviation="6" flood-color="#000" flood-opacity="0.5"/>
+              </filter>
+            </defs>
+
+            <!-- ── CAVE BACKGROUND ── -->
+            <rect x="0" y="0" width="820" height="300" fill="url(#caveWall)"/>
+            <!-- Cave wall texture — faint cracks -->
+            <path d="M120 20 L108 55 L115 80" stroke="#1a2230" stroke-width="1.5" fill="none" opacity="0.6"/>
+            <path d="M680 40 L695 80 L688 110" stroke="#1a2230" stroke-width="1.5" fill="none" opacity="0.6"/>
+            <path d="M340 10 L328 38" stroke="#1a2230" stroke-width="1" fill="none" opacity="0.4"/>
+            <!-- Ambient orange glow on ceiling -->
+            <ellipse cx="200" cy="0" rx="180" ry="60" fill="rgba(242,104,34,0.07)"/>
+            <!-- Ground -->
+            <rect x="0" y="258" width="820" height="42" fill="url(#groundGrad)"/>
+            <line x1="0" y1="258" x2="820" y2="258" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>
+            <!-- Ground surface details -->
+            <rect x="0" y="260" width="820" height="2" fill="rgba(105,232,240,0.04)"/>
+
+            <!-- ── HASH RAIN (mining state only) ── -->
+            <g class="hash-rain-svg">
+              <text class="hash-char hc1" x="590" y="80" font-size="11" fill="rgba(105,232,240,0.35)" font-family="monospace">0x8b70</text>
+              <text class="hash-char hc2" x="650" y="100" font-size="11" fill="rgba(105,232,240,0.28)" font-family="monospace">rx/0</text>
+              <text class="hash-char hc3" x="610" y="120" font-size="11" fill="rgba(105,232,240,0.22)" font-family="monospace">nonce</text>
+              <text class="hash-char hc4" x="670" y="70" font-size="11" fill="rgba(105,232,240,0.30)" font-family="monospace">hash</text>
+              <text class="hash-char hc5" x="620" y="140" font-size="10" fill="rgba(105,232,240,0.18)" font-family="monospace">3f9a</text>
+            </g>
+
+            <!-- ══════════════════════════════════════
+                 STATE: IDLE
+                 Miner sits on rock, hammer leans behind
+            ══════════════════════════════════════ -->
+            <g class="s-idle">
+              <!-- Rock seat -->
+              <polygon points="130,258 145,232 175,228 210,230 235,228 258,236 265,258"
+                       fill="#3c4452" filter="url(#softShadow)"/>
+              <polygon points="135,258 148,238 175,234 210,236 232,234 255,242 262,258"
+                       fill="#4b5260"/>
+              <!-- Rock highlight -->
+              <polygon points="148,238 175,234 210,236 208,232 175,230 150,234"
+                       fill="#5a6270" opacity="0.5"/>
+
+              <!-- Leaning pickaxe/hammer behind miner -->
+              <!-- Handle -->
+              <rect x="268" y="145" width="9" height="116" rx="4"
+                    fill="#7a4e2d" transform="rotate(-12, 272, 258)"/>
+              <!-- Pick head -->
+              <g transform="rotate(-12, 272, 258) translate(259, 140)">
+                <rect x="0" y="-8" width="26" height="12" rx="4" fill="#5a6470"/>
+                <polygon points="26,2 40,-8 26,-8" fill="#4a5460"/>
+                <polygon points="0,4 -14,12 0,-8" fill="#4a5460"/>
+                <rect x="2" y="-8" width="22" height="5" rx="2" fill="#7a8a96" opacity="0.7"/>
+              </g>
+
+              <!-- Miner sitting body -->
+              <g class="idle-miner" filter="url(#softShadow)">
+                <!-- Ground shadow -->
+                <ellipse cx="196" cy="260" rx="60" ry="7" fill="rgba(0,0,0,0.45)"/>
+
+                <!-- LEFT LEG — thigh extends left, lower leg hangs -->
+                <rect x="136" y="224" width="42" height="20" rx="8" fill="#1d2d3f"/>
+                <rect x="133" y="240" width="22" height="28" rx="7" fill="#1d2d3f"/>
+                <rect x="126" y="252" width="30" height="14" rx="6" fill="#281800"/>
+
+                <!-- RIGHT LEG — thigh extends right, lower leg hangs -->
+                <rect x="210" y="224" width="42" height="20" rx="8" fill="#1d2d3f"/>
+                <rect x="232" y="240" width="22" height="28" rx="7" fill="#1d2d3f"/>
+                <rect x="228" y="252" width="30" height="14" rx="6" fill="#281800"/>
+
+                <!-- Torso (sitting, slightly reclined) -->
+                <rect x="160" y="175" width="62" height="54" rx="11" fill="#2a4a6e"/>
+                <!-- Shirt pocket -->
+                <rect x="170" y="188" width="14" height="13" rx="3" fill="#1a3050" opacity="0.8"/>
+                <line x1="175" y1="188" x2="175" y2="201" stroke="#122340" stroke-width="1" opacity="0.5"/>
+
+                <!-- Belt -->
+                <rect x="160" y="224" width="62" height="7" rx="3" fill="#14202e"/>
+                <rect x="186" y="225" width="10" height="5" rx="2" fill="#f26822" opacity="0.7"/>
+
+                <!-- Left arm (resting on knee) -->
+                <rect x="146" y="188" width="19" height="44" rx="8" fill="#1f3a5a"/>
+                <!-- Left glove/hand on knee -->
+                <rect x="142" y="228" width="24" height="16" rx="7" fill="#5a3822"/>
+
+                <!-- Right arm (resting at side) -->
+                <rect x="218" y="188" width="19" height="38" rx="8" fill="#1f3a5a"/>
+                <rect x="216" y="222" width="22" height="15" rx="7" fill="#5a3822"/>
+
+                <!-- Neck -->
+                <rect x="183" y="168" width="20" height="12" rx="5" fill="#d4956a"/>
+
+                <!-- Head -->
+                <rect x="173" y="132" width="40" height="40" rx="10" fill="#d4956a"/>
+                <!-- Ear -->
+                <rect x="210" y="144" width="7" height="12" rx="4" fill="#c8855a"/>
+                <rect x="170" y="144" width="6" height="10" rx="3" fill="#c8855a"/>
+
+                <!-- Eyes (relaxed/sleepy look) -->
+                <rect x="181" y="142" width="9" height="7" rx="2" fill="#2c1a0a"/>
+                <rect x="199" y="142" width="9" height="7" rx="2" fill="#2c1a0a"/>
+                <!-- Eye shine -->
+                <rect x="183" y="143" width="3" height="3" rx="1" fill="white" opacity="0.55"/>
+                <rect x="201" y="143" width="3" height="3" rx="1" fill="white" opacity="0.55"/>
+                <!-- Nose -->
+                <circle cx="193" cy="154" r="3" fill="#c07848"/>
+                <!-- Neutral mouth -->
+                <path d="M184 162 Q193 165 202 162" stroke="#9a6030" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+                <!-- Hard hat -->
+                <rect x="168" y="129" width="50" height="10" rx="4" fill="#d45500"/>
+                <rect x="172" y="108" width="42" height="26" rx="12" fill="#f26822"/>
+                <!-- Hat stripe -->
+                <rect x="172" y="126" width="42" height="5" rx="2" fill="#d45500"/>
+                <!-- Hat lamp housing -->
+                <rect x="186" y="112" width="16" height="11" rx="3" fill="#e05500"/>
+                <!-- Hat lamp glow -->
+                <circle cx="194" cy="117" r="8" fill="#ffd060" opacity="0.9" filter="url(#lampGlow)"/>
+                <circle cx="194" cy="117" r="5" fill="white" opacity="0.8"/>
+              </g>
+            </g>
+
+            <!-- ══════════════════════════════════════
+                 STATE: MINING
+                 Miner stands, hammers boulder repeatedly
+            ══════════════════════════════════════ -->
+            <g class="s-mining">
+              <!-- Boulder -->
+              <g class="mining-boulder" filter="url(#softShadow)">
+                <polygon class="boulder-main"
+                  points="380,258 392,210 408,188 432,172 462,165 494,168 520,178 538,200 548,228 545,258"
+                  fill="url(#rockGrad)"/>
+                <polygon
+                  points="392,210 408,188 432,172 462,165 460,172 435,182 414,198 398,220"
+                  fill="#6a7480" opacity="0.4"/>
+                <!-- Rock cracks — always present, brighten on impact -->
+                <path class="crack" d="M440 190 L430 218 L445 235" stroke="#1e2530" stroke-width="2" fill="none"/>
+                <path class="crack" d="M480 178 L488 205 L475 230" stroke="#1e2530" stroke-width="1.5" fill="none"/>
+                <path class="crack" d="M455 210 L462 228" stroke="#1e2530" stroke-width="1.5" fill="none"/>
+              </g>
+
+              <!-- Chips / debris flying off (animated on hammer impact) -->
+              <rect class="chip chip1" x="375" y="225" width="10" height="8" rx="2" fill="#4b5260"/>
+              <rect class="chip chip2" x="365" y="215" width="8" height="6" rx="2" fill="#3c4452"/>
+              <rect class="chip chip3" x="368" y="235" width="12" height="9" rx="2" fill="#5a6270"/>
+              <rect class="chip chip4" x="358" y="228" width="7" height="7" rx="2" fill="#4b5260"/>
+              <rect class="chip chip5" x="370" y="200" width="9" height="7" rx="2" fill="#3c4452"/>
+              <!-- Impact sparks -->
+              <circle class="spark-dot s1" cx="390" cy="225" r="4" fill="#ffd060"/>
+              <circle class="spark-dot s2" cx="382" cy="215" r="3" fill="#f26822"/>
+              <circle class="spark-dot s3" cx="385" cy="238" r="3.5" fill="#ffd060"/>
+
+              <!-- Standing miner -->
+              <g class="standing-miner" filter="url(#softShadow)">
+                <!-- Ground shadow -->
+                <ellipse cx="210" cy="261" rx="60" ry="7" fill="rgba(0,0,0,0.45)"/>
+
+                <!-- Left boot -->
+                <rect x="162" y="244" width="28" height="16" rx="6" fill="#281800"/>
+                <!-- Right boot -->
+                <rect x="194" y="244" width="28" height="16" rx="6" fill="#281800"/>
+                <!-- Left shin -->
+                <rect x="165" y="214" width="22" height="34" rx="7" fill="#1d2d3f"/>
+                <!-- Right shin -->
+                <rect x="197" y="214" width="22" height="34" rx="7" fill="#1d2d3f"/>
+
+                <!-- Body / torso -->
+                <rect x="158" y="170" width="64" height="50" rx="11" fill="#2a4a6e"/>
+                <!-- Shirt pocket -->
+                <rect x="168" y="182" width="14" height="13" rx="3" fill="#1a3050" opacity="0.8"/>
+                <!-- Belt -->
+                <rect x="158" y="215" width="64" height="8" rx="3" fill="#14202e"/>
+                <rect x="183" y="216" width="12" height="6" rx="2" fill="#f26822" opacity="0.7"/>
+
+                <!-- Left arm (back, stabilising) -->
+                <rect x="142" y="174" width="20" height="46" rx="9" fill="#1f3a5a"/>
+                <rect x="138" y="216" width="24" height="16" rx="7" fill="#5a3822"/>
+
+                <!-- Neck -->
+                <rect x="184" y="163" width="20" height="12" rx="5" fill="#d4956a"/>
+
+                <!-- Head (leaning forward, determined) -->
+                <rect x="175" y="128" width="38" height="38" rx="9" fill="#d4956a"/>
+                <rect x="210" y="140" width="7" height="11" rx="3" fill="#c8855a"/>
+
+                <!-- Eyes (focused/squinting) -->
+                <rect x="182" y="139" width="9" height="6" rx="2" fill="#2c1a0a"/>
+                <rect x="199" y="139" width="9" height="6" rx="2" fill="#2c1a0a"/>
+                <rect x="184" y="140" width="3" height="2" rx="1" fill="white" opacity="0.5"/>
+                <rect x="201" y="140" width="3" height="2" rx="1" fill="white" opacity="0.5"/>
+                <!-- Brow — furrowed -->
+                <rect x="181" y="135" width="11" height="3" rx="1" fill="#9a6030" transform="rotate(-5,186,136)"/>
+                <rect x="199" y="135" width="11" height="3" rx="1" fill="#9a6030" transform="rotate(5,204,136)"/>
+                <!-- Nose -->
+                <circle cx="194" cy="150" r="3" fill="#c07848"/>
+                <!-- Gritted teeth / effort mouth -->
+                <rect x="184" y="157" width="20" height="5" rx="2" fill="#9a6030"/>
+                <line x1="189" y1="157" x2="189" y2="162" stroke="#c07848" stroke-width="1" opacity="0.6"/>
+                <line x1="194" y1="157" x2="194" y2="162" stroke="#c07848" stroke-width="1" opacity="0.6"/>
+                <line x1="199" y1="157" x2="199" y2="162" stroke="#c07848" stroke-width="1" opacity="0.6"/>
+
+                <!-- Hard hat -->
+                <rect x="170" y="126" width="50" height="10" rx="4" fill="#d45500"/>
+                <rect x="174" y="106" width="42" height="26" rx="12" fill="#f26822"/>
+                <rect x="174" y="124" width="42" height="6" rx="2" fill="#d45500"/>
+                <rect x="188" y="110" width="16" height="11" rx="3" fill="#e05500"/>
+                <circle cx="196" cy="115" r="8" fill="#ffd060" opacity="0.9" filter="url(#lampGlow)"/>
+                <circle cx="196" cy="115" r="5" fill="white" opacity="0.8"/>
+
+                <!-- RIGHT ARM + HAMMER (swings — animated via CSS) -->
+                <!-- transform-origin must be set at shoulder: 220px 176px -->
+                <g class="hammer-arm">
+                  <!-- Upper arm -->
+                  <rect x="216" y="172" width="22" height="42" rx="9" fill="#2a4a6e"/>
+                  <!-- Forearm -->
+                  <rect x="214" y="210" width="20" height="36" rx="8" fill="#d4956a"/>
+                  <!-- Handle -->
+                  <rect x="219" y="242" width="11" height="66" rx="4" fill="#7a4e2d"/>
+                  <!-- Hammer head body -->
+                  <rect x="202" y="300" width="46" height="20" rx="6" fill="#5a6470"/>
+                  <!-- Hammer face highlight -->
+                  <rect x="204" y="300" width="42" height="8" rx="4" fill="#7a8a96"/>
+                  <!-- Hammer side notch -->
+                  <rect x="200" y="304" width="8" height="12" rx="3" fill="#4a5460"/>
+                  <rect x="242" y="304" width="8" height="12" rx="3" fill="#4a5460"/>
+                </g>
+              </g>
+            </g>
+
+            <!-- ══════════════════════════════════════
+                 STATE: BLOCK FOUND
+                 Miner jumps, one hand holds gem up
+            ══════════════════════════════════════ -->
+            <g class="s-found">
+              <!-- Scattered rock pieces on ground -->
+              <polygon points="380,258 394,238 410,258" fill="#3c4452" opacity="0.9"/>
+              <polygon points="410,258 422,244 436,252 440,258" fill="#4b5260" opacity="0.9"/>
+              <polygon points="448,258 455,242 468,248 472,258" fill="#3c4452" opacity="0.8"/>
+              <polygon points="350,258 362,248 374,252 378,258" fill="#4b5260" opacity="0.7"/>
+              <!-- Pebbles -->
+              <ellipse cx="395" cy="258" rx="6" ry="4" fill="#3c4452" opacity="0.8"/>
+              <ellipse cx="430" cy="258" rx="5" ry="3" fill="#4b5260" opacity="0.7"/>
+              <ellipse cx="465" cy="258" rx="7" ry="4" fill="#3c4452" opacity="0.6"/>
+
+              <!-- Dropped hammer on ground -->
+              <g transform="translate(350, 248) rotate(-25)">
+                <rect x="0" y="-4" width="9" height="58" rx="4" fill="#7a4e2d"/>
+                <rect x="-18" y="-10" width="46" height="18" rx="5" fill="#5a6470"/>
+                <rect x="-16" y="-10" width="42" height="7" rx="3" fill="#7a8a96"/>
+              </g>
+
+              <!-- Jumping miner (entire group animates up/down) -->
+              <g class="jumping-miner" filter="url(#softShadow)">
+                <!-- Ground shadow (stays on ground while miner jumps) -->
+                <ellipse class="jump-shadow" cx="215" cy="260" rx="50" ry="6" fill="rgba(0,0,0,0.35)"/>
+
+                <!-- Left boot -->
+                <rect x="178" y="230" width="26" height="15" rx="6" fill="#281800" transform="rotate(18,191,237)"/>
+                <!-- Right boot -->
+                <rect x="206" y="226" width="26" height="15" rx="6" fill="#281800" transform="rotate(-22,219,233)"/>
+                <!-- Left lower leg -->
+                <rect x="180" y="202" width="21" height="32" rx="7" fill="#1d2d3f" transform="rotate(18,190,218)"/>
+                <!-- Right lower leg -->
+                <rect x="206" y="198" width="21" height="32" rx="7" fill="#1d2d3f" transform="rotate(-22,216,214)"/>
+
+                <!-- Body / torso -->
+                <rect x="162" y="162" width="62" height="48" rx="11" fill="#2a4a6e"/>
+                <!-- Shirt pocket -->
+                <rect x="172" y="174" width="14" height="13" rx="3" fill="#1a3050" opacity="0.8"/>
+                <!-- Belt -->
+                <rect x="162" y="205" width="62" height="8" rx="3" fill="#14202e"/>
+                <rect x="187" y="206" width="12" height="6" rx="2" fill="#f26822" opacity="0.8"/>
+
+                <!-- Left arm (side, excited pose) -->
+                <rect x="146" y="164" width="20" height="44" rx="9" fill="#1f3a5a" transform="rotate(-20,156,186)"/>
+                <rect x="132" y="198" width="24" height="16" rx="7" fill="#5a3822" transform="rotate(-20,144,206)"/>
+
+                <!-- Neck -->
+                <rect x="185" y="155" width="20" height="12" rx="5" fill="#d4956a"/>
+
+                <!-- Head (tilted back, elated) -->
+                <rect x="176" y="118" width="38" height="40" rx="10" fill="#d4956a" transform="rotate(8,195,138)"/>
+                <rect x="211" y="130" width="7" height="11" rx="3" fill="#c8855a" transform="rotate(8,214,135)"/>
+
+                <!-- Eyes (wide open, happy) -->
+                <rect x="183" y="128" width="10" height="10" rx="3" fill="#2c1a0a" transform="rotate(8,188,133)"/>
+                <rect x="201" y="126" width="10" height="10" rx="3" fill="#2c1a0a" transform="rotate(8,206,131)"/>
+                <rect x="185" y="129" width="4" height="4" rx="2" fill="white" opacity="0.7" transform="rotate(8,187,131)"/>
+                <rect x="203" y="127" width="4" height="4" rx="2" fill="white" opacity="0.7" transform="rotate(8,205,129)"/>
+                <!-- Big happy smile -->
+                <path d="M184 146 Q195 156 206 146" stroke="#9a6030" stroke-width="3.5" fill="none" stroke-linecap="round" transform="rotate(8,195,149)"/>
+                <!-- Cheeks -->
+                <ellipse cx="181" cy="148" rx="6" ry="4" fill="#e07848" opacity="0.4" transform="rotate(8,181,148)"/>
+                <ellipse cx="209" cy="146" rx="6" ry="4" fill="#e07848" opacity="0.4" transform="rotate(8,209,146)"/>
+
+                <!-- Hard hat (slightly askew from jumping) -->
+                <rect x="172" y="116" width="50" height="10" rx="4" fill="#d45500" transform="rotate(8,197,121)"/>
+                <rect x="176" y="96" width="42" height="26" rx="12" fill="#f26822" transform="rotate(8,197,109)"/>
+                <rect x="176" y="114" width="42" height="6" rx="2" fill="#d45500" transform="rotate(8,197,117)"/>
+                <rect x="190" y="100" width="16" height="11" rx="3" fill="#e05500" transform="rotate(8,198,105)"/>
+                <circle cx="198" cy="105" r="9" fill="#ffd060" opacity="0.9" filter="url(#lampGlow)" transform="rotate(8,198,105)"/>
+                <circle cx="198" cy="105" r="6" fill="white" opacity="0.8" transform="rotate(8,198,105)"/>
+
+                <!-- RIGHT ARM raised — holding gem -->
+                <rect x="222" y="100" width="20" height="44" rx="9" fill="#2a4a6e" transform="rotate(-55,232,122)"/>
+                <rect x="215" y="78" width="22" height="30" rx="8" fill="#d4956a" transform="rotate(-55,226,93)"/>
+
+                <!-- Gem held aloft -->
+                <g class="gem-group" transform="translate(258, 52)">
+                  <!-- Gem glow halo -->
+                  <circle cx="0" cy="0" r="32" fill="rgba(105,232,240,0.15)" class="gem-halo"/>
+                  <circle cx="0" cy="0" r="22" fill="rgba(105,232,240,0.10)" class="gem-halo2"/>
+                  <!-- Gem body (hexagon-like) -->
+                  <polygon points="0,-24 20,-10 20,10 0,24 -20,10 -20,-10"
+                           fill="#69e8f0" filter="url(#gemGlow)" class="gem-body"/>
+                  <!-- Gem facets -->
+                  <polygon points="0,-24 20,-10 0,-4" fill="rgba(255,255,255,0.45)"/>
+                  <polygon points="-20,-10 0,-24 0,-4" fill="rgba(255,255,255,0.25)"/>
+                  <polygon points="0,24 20,10 0,4" fill="rgba(0,180,200,0.55)"/>
+                  <polygon points="-20,10 0,24 0,4" fill="rgba(0,180,200,0.40)"/>
+                  <!-- Inner sparkle -->
+                  <circle cx="0" cy="0" r="6" fill="white" opacity="0.7"/>
+                </g>
+
+                <!-- Celebration sparkles / stars -->
+                <g class="sparkles">
+                  <g class="sp sp1" transform="translate(300, 40)">
+                    <polygon points="0,-10 2.5,-2.5 10,0 2.5,2.5 0,10 -2.5,2.5 -10,0 -2.5,-2.5" fill="#ffd060"/>
+                  </g>
+                  <g class="sp sp2" transform="translate(320, 80)">
+                    <polygon points="0,-8 2,-2 8,0 2,2 0,8 -2,2 -8,0 -2,-2" fill="#69e8f0"/>
+                  </g>
+                  <g class="sp sp3" transform="translate(285, 18)">
+                    <polygon points="0,-7 1.8,-1.8 7,0 1.8,1.8 0,7 -1.8,1.8 -7,0 -1.8,-1.8" fill="#f26822"/>
+                  </g>
+                  <g class="sp sp4" transform="translate(338, 52)">
+                    <polygon points="0,-9 2.2,-2.2 9,0 2.2,2.2 0,9 -2.2,2.2 -9,0 -2.2,-2.2" fill="#ffd060"/>
+                  </g>
+                  <g class="sp sp5" transform="translate(270, 60)">
+                    <polygon points="0,-6 1.5,-1.5 6,0 1.5,1.5 0,6 -1.5,1.5 -6,0 -1.5,-1.5" fill="#69e8f0"/>
+                  </g>
+                </g>
+              </g>
+            </g>
+
+            <!-- ── COIN DISPLAY (right side, always) ── -->
+            <g class="coin-display">
+              <circle cx="718" cy="148" r="58" fill="rgba(242,104,34,0.06)" stroke="rgba(255,200,87,0.18)" stroke-width="1"/>
+              <circle cx="718" cy="148" r="44" fill="rgba(242,104,34,0.04)" stroke="rgba(255,200,87,0.12)" stroke-width="1"/>
+              <image href="./monero-xmr-logo.svg" x="678" y="108" width="80" height="80" filter="url(#lampGlow)"/>
+            </g>
+          </svg>
         </div>
-        <div id="miner" class="miner gif-miner" aria-label="Animated miner">
-          <span class="miner-glow" aria-hidden="true"></span>
-          <img src="./assets/mining.gif" alt="Animated miner swinging a pickaxe" />
-        </div>
-        <div class="ore-field" aria-hidden="true">
-          <span class="mine-vein vein-a"></span>
-          <span class="mine-vein vein-b"></span>
-          <span class="mine-vein vein-c"></span>
-          <span class="rock rock-a"></span>
-          <span class="rock rock-b"></span>
-          <span class="rock rock-c"></span>
-          <span class="spark spark-a"></span>
-          <span class="spark spark-b"></span>
-          <span class="spark spark-c"></span>
-        </div>
-        <div id="ore" class="coin-orbit" aria-label="Monero coin">
-          <span class="coin-halo"></span>
-          <img class="coin-logo" src="./monero-xmr-logo.svg" alt="" />
-        </div>
-        <div class="stage-floor" aria-hidden="true"></div>
+
+        <!-- Stage floor bar -->
+        <div class="stage-floor"></div>
       </div>
 
       <section class="metrics" aria-label="Daemon metrics">
-        <div>Height: <span id="height">-</span></div>
-        <div>Target: <span id="targetHeight">-</span></div>
-        <div>Difficulty: <span id="difficulty">-</span></div>
-        <div>Tx Pool: <span id="txPool">-</span></div>
-        <div>Peers: <span id="peers">-</span></div>
-        <div>Mining Speed: <span id="miningSpeed">-</span></div>
-        <div>Mining Threads: <span id="miningThreads">-</span></div>
+        <div class="metric-card">
+          <span class="metric-label">Height</span>
+          <span id="height" class="metric-value">-</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Target</span>
+          <span id="targetHeight" class="metric-value">-</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Difficulty</span>
+          <span id="difficulty" class="metric-value">-</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Tx Pool</span>
+          <span id="txPool" class="metric-value">-</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Peers</span>
+          <span id="peers" class="metric-value">-</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Mining Speed</span>
+          <span id="miningSpeed" class="metric-value">-</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-label">Threads</span>
+          <span id="miningThreads" class="metric-value">-</span>
+        </div>
       </section>
 
       <section class="console-header">
         <h2>Runtime Console</h2>
-        <button id="clearLogs" type="button">Clear Console</button>
+        <button id="clearLogs" type="button">Clear</button>
       </section>
       <pre id="logPanel" class="log-panel"></pre>
     </main>
+
     <script src="./app.js"></script>
+    <script>
+      // Update stage readout on state change
+      const readoutState = document.getElementById('stageReadout')?.querySelector('.readout-state');
+      const stateLabels = { idle: 'Idle', starting: 'Starting…', mining: 'Mining Active', 'block-found': 'Block Found!', error: 'Error' };
+      const obs = new MutationObserver(() => {
+        const s = document.body.dataset.state || 'idle';
+        if (readoutState) readoutState.textContent = stateLabels[s] || s;
+      });
+      obs.observe(document.body, { attributes: true, attributeFilter: ['data-state'] });
+    </script>
   </body>
 </html>
