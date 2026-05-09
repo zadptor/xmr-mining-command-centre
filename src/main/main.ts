@@ -1,6 +1,7 @@
-import { app, BrowserWindow, ipcMain } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, type OpenDialogOptions } from "electron";
 import path from "node:path";
 import fs from "node:fs";
+import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { MoneroDaemonRpc } from "./daemon-rpc";
 
 type UiStatus = {
@@ -17,9 +18,22 @@ type UiStatus = {
   lastUpdatedAt: string;
 };
 
+type DaemonSettings = {
+  monerodPath: string;
+  settingsPath: string;
+};
+
 const rpc = new MoneroDaemonRpc();
+const defaultMonerodPaths = [
+  "C:\\Program Files\\Monero GUI Wallet\\monerod.exe",
+  "C:\\Program Files (x86)\\Monero GUI Wallet\\monerod.exe"
+];
 let mainWindow: BrowserWindow | null = null;
 let statusPollTimer: NodeJS.Timeout | null = null;
+let managedDaemon: ChildProcessWithoutNullStreams | null = null;
+let daemonStartupPromise: Promise<void> | null = null;
+let settingsFilePath = "";
+let configuredMonerodPath = "";
 let lastHeight = 0;
 let miningExpected = false;
 let lastStatus: UiStatus | null = null;
@@ -36,6 +50,66 @@ function log(level: "INFO" | "WARN" | "ERROR", source: "MAIN" | "UI", message: s
     fs.appendFileSync(logFilePath, `${line}\n`, "utf8");
   }
   mainWindow?.webContents.send("daemon:log", line);
+}
+
+function validateMonerodPath(candidatePath: string): string {
+  const trimmedPath = candidatePath.trim();
+  if (!trimmedPath) {
+    throw new Error("Select monerod.exe before starting the daemon.");
+  }
+  if (path.basename(trimmedPath).toLowerCase() !== "monerod.exe") {
+    throw new Error("Selected file must be named monerod.exe.");
+  }
+  if (!fs.existsSync(trimmedPath)) {
+    throw new Error(`monerod.exe not found at ${trimmedPath}`);
+  }
+  return trimmedPath;
+}
+
+function findDefaultMonerodPath(): string {
+  return defaultMonerodPaths.find((candidatePath) => fs.existsSync(candidatePath)) ?? "";
+}
+
+function getMonerodPath(): string {
+  if (configuredMonerodPath) {
+    return configuredMonerodPath;
+  }
+  return findDefaultMonerodPath();
+}
+
+function getDaemonSettings(): DaemonSettings {
+  return {
+    monerodPath: getMonerodPath(),
+    settingsPath: settingsFilePath
+  };
+}
+
+function loadSettings(): void {
+  if (!settingsFilePath || !fs.existsSync(settingsFilePath)) {
+    configuredMonerodPath = findDefaultMonerodPath();
+    return;
+  }
+
+  try {
+    const settings = JSON.parse(fs.readFileSync(settingsFilePath, "utf8")) as Partial<DaemonSettings>;
+    configuredMonerodPath = typeof settings.monerodPath === "string" ? settings.monerodPath : "";
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    log("WARN", "MAIN", `settings load failed: ${message}`);
+    configuredMonerodPath = findDefaultMonerodPath();
+  }
+}
+
+function saveSettings(): void {
+  if (!settingsFilePath) {
+    throw new Error("Settings path is not initialized.");
+  }
+
+  fs.writeFileSync(
+    settingsFilePath,
+    JSON.stringify({ monerodPath: configuredMonerodPath }, null, 2),
+    "utf8"
+  );
 }
 
 async function pollStatus(): Promise<UiStatus> {
@@ -67,6 +141,91 @@ async function pollStatus(): Promise<UiStatus> {
   };
   lastStatus = status;
   return status;
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function isDaemonRpcReady(): Promise<boolean> {
+  try {
+    await rpc.getInfo();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function waitForDaemonRpc(timeoutMs = 45000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await isDaemonRpcReady()) {
+      return;
+    }
+    await delay(1000);
+  }
+  throw new Error(`Monero daemon RPC did not become ready within ${timeoutMs / 1000}s.`);
+}
+
+async function ensureDaemonRunning(): Promise<void> {
+  if (await isDaemonRpcReady()) {
+    log("INFO", "MAIN", "Monero daemon RPC already available on 127.0.0.1:18081.");
+    return;
+  }
+
+  const monerodPath = validateMonerodPath(getMonerodPath());
+  if (!fs.existsSync(monerodPath)) {
+    throw new Error(`monerod.exe not found at ${monerodPath}`);
+  }
+
+  log("INFO", "MAIN", `Starting Monero daemon from ${monerodPath}`);
+  managedDaemon = spawn(monerodPath, [
+    "--rpc-bind-ip",
+    "127.0.0.1",
+    "--rpc-bind-port",
+    "18081",
+    "--confirm-external-bind"
+  ], {
+    cwd: path.dirname(monerodPath),
+    windowsHide: true
+  });
+
+  managedDaemon.stdout.on("data", (chunk: Buffer) => {
+    const text = chunk.toString("utf8").trim();
+    if (text) {
+      log("INFO", "MAIN", `monerod stdout: ${text}`);
+    }
+  });
+
+  managedDaemon.stderr.on("data", (chunk: Buffer) => {
+    const text = chunk.toString("utf8").trim();
+    if (text) {
+      log("WARN", "MAIN", `monerod stderr: ${text}`);
+    }
+  });
+
+  managedDaemon.on("error", (error) => {
+    log("ERROR", "MAIN", `monerod failed to start: ${error.message}`);
+  });
+
+  managedDaemon.on("exit", (code, signal) => {
+    log("WARN", "MAIN", `monerod exited code=${code ?? "null"} signal=${signal ?? "null"}`);
+    managedDaemon = null;
+  });
+
+  await waitForDaemonRpc();
+  log("INFO", "MAIN", "Monero daemon RPC is ready on 127.0.0.1:18081.");
+}
+
+async function waitForDaemonStartup(): Promise<void> {
+  if (daemonStartupPromise) {
+    await daemonStartupPromise;
+  }
+}
+
+function startDaemonStartup(): Promise<void> {
+  daemonStartupPromise = ensureDaemonRunning();
+  return daemonStartupPromise;
 }
 
 function createWindow(): void {
@@ -110,11 +269,62 @@ app.whenReady().then(() => {
   const logsDir = path.join(app.getPath("userData"), "logs");
   fs.mkdirSync(logsDir, { recursive: true });
   logFilePath = path.join(logsDir, "app.log");
+  settingsFilePath = path.join(app.getPath("userData"), "settings.json");
+  loadSettings();
   createWindow();
   log("INFO", "MAIN", `App started. File logging to ${logFilePath}`);
+  void startDaemonStartup()
+    .then(async () => {
+      const status = await pollStatus();
+      mainWindow?.webContents.send("daemon:status", status);
+    })
+    .catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      log("ERROR", "MAIN", `daemon startup failed: ${message}`);
+      mainWindow?.webContents.send("daemon:error", `daemon startup failed: ${message}`);
+    });
+
+  ipcMain.handle("daemon:get-settings", async () => {
+    return getDaemonSettings();
+  });
+
+  ipcMain.handle("daemon:choose-monerod", async () => {
+    const dialogOptions: OpenDialogOptions = {
+      title: "Select monerod.exe",
+      defaultPath: getMonerodPath() || "C:\\Program Files\\Monero GUI Wallet",
+      filters: [{ name: "Monero daemon", extensions: ["exe"] }],
+      properties: ["openFile"]
+    };
+    const result = mainWindow
+      ? await dialog.showOpenDialog(mainWindow, dialogOptions)
+      : await dialog.showOpenDialog(dialogOptions);
+
+    if (result.canceled || result.filePaths.length === 0) {
+      return getDaemonSettings();
+    }
+
+    configuredMonerodPath = validateMonerodPath(result.filePaths[0]);
+    saveSettings();
+    log("INFO", "MAIN", `Saved monerod path: ${configuredMonerodPath}`);
+    mainWindow?.webContents.send("daemon:settings", getDaemonSettings());
+
+    void startDaemonStartup()
+      .then(async () => {
+        const status = await pollStatus();
+        mainWindow?.webContents.send("daemon:status", status);
+      })
+      .catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        log("ERROR", "MAIN", `daemon startup failed after settings update: ${message}`);
+        mainWindow?.webContents.send("daemon:error", `daemon startup failed: ${message}`);
+      });
+
+    return getDaemonSettings();
+  });
 
   ipcMain.handle("daemon:get-status", async () => {
     try {
+      await waitForDaemonStartup();
       return await pollStatus();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
@@ -134,6 +344,7 @@ app.whenReady().then(() => {
       throw new Error("Threads must be an integer between 1 and 128.");
     }
 
+    await waitForDaemonStartup();
     log("INFO", "MAIN", "calling rpc.startMining...");
     await rpc.startMining(walletAddress, threads);
     log("INFO", "MAIN", "rpc.startMining completed");
@@ -161,6 +372,7 @@ app.whenReady().then(() => {
   });
 
   ipcMain.handle("daemon:stop-mining", async () => {
+    await waitForDaemonStartup();
     await rpc.stopMining();
     miningExpected = false;
     log("INFO", "MAIN", "stop_mining accepted");
@@ -171,6 +383,7 @@ app.whenReady().then(() => {
     if (!Number.isInteger(down) || !Number.isInteger(up)) {
       throw new Error("Limits must be integers.");
     }
+    await waitForDaemonStartup();
     await rpc.setLimit(down, up);
     log("INFO", "MAIN", `set_limit accepted: down=${down} up=${up}`);
     return pollStatus();
@@ -185,6 +398,7 @@ app.whenReady().then(() => {
 
   statusPollTimer = setInterval(async () => {
     try {
+      await waitForDaemonStartup();
       const status = await pollStatus();
       mainWindow?.webContents.send("daemon:status", status);
     } catch (error) {
@@ -197,6 +411,11 @@ app.whenReady().then(() => {
 
 app.on("before-quit", () => {
   stopStatusPolling();
+  if (managedDaemon) {
+    log("INFO", "MAIN", "Stopping app-managed monerod process.");
+    managedDaemon.kill();
+    managedDaemon = null;
+  }
 });
 
 app.on("window-all-closed", () => {

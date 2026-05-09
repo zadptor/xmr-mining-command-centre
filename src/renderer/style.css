@@ -206,6 +206,10 @@ body[data-state="error"] .status-light {
   background: linear-gradient(135deg, var(--panel-hot), rgba(8, 11, 15, 0.94));
 }
 
+.daemon-settings {
+  border-color: rgba(105, 232, 240, 0.35);
+}
+
 label {
   display: flex;
   flex-direction: column;
@@ -228,6 +232,11 @@ button {
 input {
   border-radius: 10px;
   font-size: 13px;
+}
+
+input[readonly] {
+  color: #c9d4d2;
+  background: #05080c;
 }
 
 input:focus,

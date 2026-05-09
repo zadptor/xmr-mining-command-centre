@@ -12,7 +12,14 @@ type UiStatus = {
   lastUpdatedAt: string;
 };
 
+type DaemonSettings = {
+  monerodPath: string;
+  settingsPath: string;
+};
+
 type DaemonApi = {
+  getSettings: () => Promise<DaemonSettings>;
+  chooseMonerod: () => Promise<DaemonSettings>;
   getStatus: () => Promise<UiStatus>;
   startMining: (walletAddress: string, threads: number) => Promise<UiStatus>;
   stopMining: () => Promise<UiStatus>;
@@ -20,6 +27,7 @@ type DaemonApi = {
   getLogs: () => Promise<string[]>;
   logClient: (level: "INFO" | "WARN" | "ERROR", message: string) => Promise<void>;
   onStatus: (cb: (status: UiStatus) => void) => void;
+  onSettings: (cb: (settings: DaemonSettings) => void) => void;
   onLog: (cb: (line: string) => void) => void;
   onError: (cb: (message: string) => void) => void;
 };
@@ -32,6 +40,7 @@ const appWindow = window as AppWindow;
 
 const statusEl = document.getElementById("status") as HTMLParagraphElement;
 const actionFeedbackEl = document.getElementById("actionFeedback") as HTMLParagraphElement;
+const monerodPathEl = document.getElementById("monerodPath") as HTMLInputElement;
 const walletAddressEl = document.getElementById("walletAddress") as HTMLInputElement;
 const threadsEl = document.getElementById("threads") as HTMLInputElement;
 const limitDownEl = document.getElementById("limitDown") as HTMLInputElement;
@@ -123,6 +132,10 @@ function applyStatus(status: UiStatus): void {
     minerEl.classList.add("celebrate");
     setTimeout(() => minerEl.classList.remove("celebrate"), 1400);
   }
+}
+
+function applySettings(settings: DaemonSettings): void {
+  monerodPathEl.value = settings.monerodPath || "";
 }
 
 async function refreshStatus(): Promise<void> {
@@ -240,6 +253,27 @@ function showMissingBridge(): void {
   void refreshStatus();
 });
 
+(document.getElementById("chooseMonerod") as HTMLButtonElement).addEventListener("click", async (event) => {
+  const button = event.currentTarget as HTMLButtonElement;
+  const api = getDaemonApi();
+  if (!api) {
+    showMissingBridge();
+    return;
+  }
+
+  showAction("Selecting monerod.exe...");
+  await runWithButtonState(button, async () => {
+    try {
+      const settings = await api.chooseMonerod();
+      applySettings(settings);
+      showAction(`Monero daemon path set: ${settings.monerodPath}`);
+      await refreshStatus();
+    } catch (error) {
+      showError(`daemon path update failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  });
+});
+
 (document.getElementById("clearLogs") as HTMLButtonElement).addEventListener("click", () => {
   logs.length = 0;
   logPanel.textContent = "";
@@ -259,6 +293,10 @@ function showMissingBridge(): void {
     applyStatus(status);
   });
 
+  api.onSettings((settings) => {
+    applySettings(settings);
+  });
+
   api.onLog((line) => {
     appendLog(line);
   });
@@ -268,6 +306,13 @@ function showMissingBridge(): void {
   });
 
   appendLog("INFO: IPC bridge detected.");
+  try {
+    const settings = await api.getSettings();
+    applySettings(settings);
+  } catch (error) {
+    showError(`settings load failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
   try {
     const initialLogs = await api.getLogs();
     for (const line of initialLogs) {

@@ -14,7 +14,14 @@ type UiStatus = {
   lastUpdatedAt: string;
 };
 
+type DaemonSettings = {
+  monerodPath: string;
+  settingsPath: string;
+};
+
 type DaemonApi = {
+  getSettings: () => Promise<DaemonSettings>;
+  chooseMonerod: () => Promise<DaemonSettings>;
   getStatus: () => Promise<UiStatus>;
   startMining: (walletAddress: string, threads: number) => Promise<UiStatus>;
   stopMining: () => Promise<UiStatus>;
@@ -22,11 +29,14 @@ type DaemonApi = {
   getLogs: () => Promise<string[]>;
   logClient: (level: "INFO" | "WARN" | "ERROR", message: string) => Promise<void>;
   onStatus: (cb: (status: UiStatus) => void) => void;
+  onSettings: (cb: (settings: DaemonSettings) => void) => void;
   onLog: (cb: (line: string) => void) => void;
   onError: (cb: (message: string) => void) => void;
 };
 
 const api: DaemonApi = {
+  getSettings: () => ipcRenderer.invoke("daemon:get-settings"),
+  chooseMonerod: () => ipcRenderer.invoke("daemon:choose-monerod"),
   getStatus: () => ipcRenderer.invoke("daemon:get-status"),
   startMining: (walletAddress, threads) => ipcRenderer.invoke("daemon:start-mining", walletAddress, threads),
   stopMining: () => ipcRenderer.invoke("daemon:stop-mining"),
@@ -35,6 +45,9 @@ const api: DaemonApi = {
   logClient: (level, message) => ipcRenderer.invoke("daemon:log-client", level, message),
   onStatus: (cb) => {
     ipcRenderer.on("daemon:status", (_event, payload) => cb(payload));
+  },
+  onSettings: (cb) => {
+    ipcRenderer.on("daemon:settings", (_event, payload) => cb(payload));
   },
   onLog: (cb) => {
     ipcRenderer.on("daemon:log", (_event, payload) => cb(payload));
