@@ -6,7 +6,9 @@ Build **MoneroMineCentral** as an Electron desktop app that controls a running M
 ## Current State
 - Electron + TypeScript app is wired and buildable.
 - Renderer script execution issue is fixed. Do not reintroduce `export {}` in `src/renderer/app.ts` unless `index.html` is changed to load it as `type="module"`.
+- `src/renderer/app.ts` uses a triple-slash reference to `src/shared/daemon-api.d.ts` so IDEs such as WebStorm can resolve shared ambient daemon API types without making the renderer script a module.
 - Preload exposes `window.daemonApi` and renderer guards missing preload with a visible IPC bridge banner.
+- Daemon IPC/status types are centralized in `src/shared/daemon-api.d.ts` and included by both main/preload and renderer TypeScript configs.
 - Main process captures renderer console messages, renderer load failures, and renderer crashes into the app log.
 - File logging is enabled in Electron userData:
   - `C:\Users\USER\AppData\Roaming\monero-mine-central\logs\app.log`
@@ -27,12 +29,17 @@ Build **MoneroMineCentral** as an Electron desktop app that controls a running M
   - UI state update
 - Renderer UI has been redesigned with crypto/mining theme:
   - Monero logo in header
-  - animated miner/pickaxe scene
-  - ore pile sparks while mining
-  - floating Monero coin
-  - hash-rain background
+  - PixiJS animated miner scene
+  - animation enable/disable toggle to reduce renderer work while mining
   - runtime console
   - metrics for height, target, difficulty, tx pool, peers, mining speed, and mining threads
+- Metric values wrap inside their cards so large daemon numbers do not overflow.
+- Hidden legacy SVG mining scene and stale renderer/static helper files were removed:
+  - `server.js`
+  - `src/main/dev-note.js`
+  - `src/main/mining-state.ts`
+  - `src/main/monero-cli.ts`
+  - `src/renderer/app.js`
 - `monero-xmr-logo.svg` is copied into `dist/renderer` during build.
 - A clickable Windows app build is available at:
   - `release-current\Monero Mine Central-win32-x64\Monero Mine Central.exe`
@@ -62,7 +69,7 @@ Build **MoneroMineCentral** as an Electron desktop app that controls a running M
 ## Known Environment Notes
 - The app expects `monerod` RPC on `127.0.0.1:18081`.
 - The packaged `.exe` must stay inside its generated folder with adjacent Electron support files.
-- Old folders such as `release`, `release-build`, `release-app`, and `release-packaged` may exist from previous packaging attempts. Use `release-current`.
+- Use `release-current`.
 - If packaging fails with locked `app.asar`, close any running packaged app or Electron process, or package into a fresh output folder.
 
 ## Debug Checklist
