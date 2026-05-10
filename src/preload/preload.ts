@@ -1,39 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
 
-type UiStatus = {
-  state: "idle" | "mining" | "block-found";
-  height: number;
-  targetHeight: number;
-  difficulty: number;
-  txPoolSize: number;
-  peers: number;
-  miningActive: boolean;
-  miningSpeed: number;
-  miningThreads: number;
-  logLine: string;
-  lastUpdatedAt: string;
-};
-
-type DaemonSettings = {
-  monerodPath: string;
-  settingsPath: string;
-};
-
-type DaemonApi = {
-  getSettings: () => Promise<DaemonSettings>;
-  chooseMonerod: () => Promise<DaemonSettings>;
-  getStatus: () => Promise<UiStatus>;
-  startMining: (walletAddress: string, threads: number) => Promise<UiStatus>;
-  stopMining: () => Promise<UiStatus>;
-  setLimit: (down: number, up: number) => Promise<UiStatus>;
-  getLogs: () => Promise<string[]>;
-  logClient: (level: "INFO" | "WARN" | "ERROR", message: string) => Promise<void>;
-  onStatus: (cb: (status: UiStatus) => void) => void;
-  onSettings: (cb: (settings: DaemonSettings) => void) => void;
-  onLog: (cb: (line: string) => void) => void;
-  onError: (cb: (message: string) => void) => void;
-};
-
 const api: DaemonApi = {
   getSettings: () => ipcRenderer.invoke("daemon:get-settings"),
   chooseMonerod: () => ipcRenderer.invoke("daemon:choose-monerod"),

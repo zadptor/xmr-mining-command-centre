@@ -4,25 +4,6 @@ import fs from "node:fs";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { MoneroDaemonRpc } from "./daemon-rpc";
 
-type UiStatus = {
-  state: "idle" | "mining" | "block-found";
-  height: number;
-  targetHeight: number;
-  difficulty: number;
-  txPoolSize: number;
-  peers: number;
-  miningActive: boolean;
-  miningSpeed: number;
-  miningThreads: number;
-  logLine: string;
-  lastUpdatedAt: string;
-};
-
-type DaemonSettings = {
-  monerodPath: string;
-  settingsPath: string;
-};
-
 const rpc = new MoneroDaemonRpc();
 const defaultMonerodPaths = [
   "C:\\Program Files\\Monero GUI Wallet\\monerod.exe",
@@ -35,12 +16,11 @@ let daemonStartupPromise: Promise<void> | null = null;
 let settingsFilePath = "";
 let configuredMonerodPath = "";
 let lastHeight = 0;
-let miningExpected = false;
 let lastStatus: UiStatus | null = null;
 const logLines: string[] = [];
 let logFilePath = "";
 
-function log(level: "INFO" | "WARN" | "ERROR", source: "MAIN" | "UI", message: string): void {
+function log(level: LogLevel, source: "MAIN" | "UI", message: string): void {
   const line = `[${new Date().toISOString()}] [${level}] [${source}] ${message}`;
   logLines.push(line);
   if (logLines.length > 400) {
@@ -117,10 +97,9 @@ async function pollStatus(): Promise<UiStatus> {
     rpc.getInfo(),
     rpc.getMiningStatus()
   ]);
-  miningExpected = miningStatus.active;
-  let state: UiStatus["state"] = miningStatus.active ? "mining" : "idle";
+  const state: UiStatus["state"] = miningStatus.active ? "mining" : "idle";
 
-  if (miningExpected && lastHeight > 0 && info.height > lastHeight) {
+  if (miningStatus.active && lastHeight > 0 && info.height > lastHeight) {
     log("INFO", "MAIN", `New block height detected: ${lastHeight} -> ${info.height}`);
   }
 
@@ -348,7 +327,6 @@ app.whenReady().then(() => {
     log("INFO", "MAIN", "calling rpc.startMining...");
     await rpc.startMining(walletAddress, threads);
     log("INFO", "MAIN", "rpc.startMining completed");
-    miningExpected = true;
     log("INFO", "MAIN", `start_mining accepted for ${walletAddress.slice(0, 12)}... with ${threads} threads`);
     try {
       return await pollStatus();
@@ -374,7 +352,6 @@ app.whenReady().then(() => {
   ipcMain.handle("daemon:stop-mining", async () => {
     await waitForDaemonStartup();
     await rpc.stopMining();
-    miningExpected = false;
     log("INFO", "MAIN", "stop_mining accepted");
     return pollStatus();
   });
@@ -392,7 +369,7 @@ app.whenReady().then(() => {
   ipcMain.handle("daemon:get-logs", async () => {
     return [...logLines];
   });
-  ipcMain.handle("daemon:log-client", async (_event, level: "INFO" | "WARN" | "ERROR", message: string) => {
+  ipcMain.handle("daemon:log-client", async (_event, level: LogLevel, message: string) => {
     log(level, "UI", message);
   });
 

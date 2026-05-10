@@ -1,36 +1,4 @@
-type UiStatus = {
-  state: "idle" | "mining" | "block-found";
-  height: number;
-  targetHeight: number;
-  difficulty: number;
-  txPoolSize: number;
-  peers: number;
-  miningActive: boolean;
-  miningSpeed: number;
-  miningThreads: number;
-  logLine: string;
-  lastUpdatedAt: string;
-};
-
-type DaemonSettings = {
-  monerodPath: string;
-  settingsPath: string;
-};
-
-type DaemonApi = {
-  getSettings: () => Promise<DaemonSettings>;
-  chooseMonerod: () => Promise<DaemonSettings>;
-  getStatus: () => Promise<UiStatus>;
-  startMining: (walletAddress: string, threads: number) => Promise<UiStatus>;
-  stopMining: () => Promise<UiStatus>;
-  setLimit: (down: number, up: number) => Promise<UiStatus>;
-  getLogs: () => Promise<string[]>;
-  logClient: (level: "INFO" | "WARN" | "ERROR", message: string) => Promise<void>;
-  onStatus: (cb: (status: UiStatus) => void) => void;
-  onSettings: (cb: (settings: DaemonSettings) => void) => void;
-  onLog: (cb: (line: string) => void) => void;
-  onError: (cb: (message: string) => void) => void;
-};
+/// <reference path="../shared/daemon-api.d.ts" />
 
 type AppWindow = Window & {
   daemonApi?: DaemonApi;
@@ -52,8 +20,8 @@ const threadsEl = document.getElementById("threads") as HTMLInputElement;
 const limitDownEl = document.getElementById("limitDown") as HTMLInputElement;
 const limitUpEl = document.getElementById("limitUp") as HTMLInputElement;
 const logPanel = document.getElementById("logPanel") as HTMLPreElement;
-const minerEl = document.getElementById("miner") as HTMLDivElement;
 const bridgeBannerEl = document.getElementById("bridgeBanner") as HTMLDivElement;
+const toggleAnimationEl = document.getElementById("toggleAnimation") as HTMLButtonElement;
 
 const metricHeight = document.getElementById("height") as HTMLSpanElement;
 const metricTargetHeight = document.getElementById("targetHeight") as HTMLSpanElement;
@@ -85,6 +53,7 @@ class MiningSpriteScene {
   private state: SceneState = "idle";
   private phase: SpritePhase = "idle";
   private currentAnimation = "";
+  private enabled = true;
   private targetX = 0;
   private targetY = 0;
   private actionMs = 0;
@@ -96,17 +65,37 @@ class MiningSpriteScene {
     void this.init();
   }
 
-  playState(state: SceneState): void {
+  setEnabled(enabled: boolean): void {
+    this.enabled = enabled;
+    this.host.hidden = !enabled;
+
     if (!this.ready) {
-      this.state = state;
+      return;
+    }
+
+    if (enabled) {
+      this.app.ticker.start();
+      this.playState(this.state);
+      return;
+    }
+
+    this.app.ticker.stop();
+  }
+
+  playState(state: SceneState): void {
+    this.state = state;
+
+    if (!this.enabled) {
+      return;
+    }
+
+    if (!this.ready) {
       return;
     }
 
     if (state === this.state && state === "mining" && this.phase !== "idle") {
       return;
     }
-
-    this.state = state;
 
     if (state === "block-found") {
       this.phase = "celebrating";
@@ -165,6 +154,7 @@ class MiningSpriteScene {
     this.ready = true;
     this.playState(this.state);
     this.app.ticker.add((ticker: { deltaMS: number }) => this.update(ticker.deltaMS));
+    this.setEnabled(this.enabled);
     new ResizeObserver(() => {
       this.buildMineBackground();
       if (this.state === "idle" || this.state === "block-found") {
@@ -448,6 +438,7 @@ class MiningSpriteScene {
 }
 
 const spriteScene = new MiningSpriteScene(document.getElementById("spriteStage") as HTMLDivElement);
+let animationEnabled = true;
 
 appendLog("INFO: UI script booting...");
 
@@ -455,7 +446,7 @@ function getDaemonApi(): DaemonApi | null {
   return appWindow.daemonApi ?? null;
 }
 
-function logClient(level: "INFO" | "WARN" | "ERROR", message: string): void {
+function logClient(level: LogLevel, message: string): void {
   const api = getDaemonApi();
   if (!api) {
     appendLog(`WARN: IPC bridge unavailable; could not write to app log: ${message}`);
@@ -519,10 +510,14 @@ function applyStatus(status: UiStatus): void {
   metricMiningSpeed.textContent = `${status.miningSpeed} H/s`;
   metricMiningThreads.textContent = String(status.miningThreads);
 
-  if (status.state === "block-found") {
-    minerEl.classList.add("celebrate");
-    setTimeout(() => minerEl.classList.remove("celebrate"), 1400);
-  }
+}
+
+function setAnimationEnabled(enabled: boolean): void {
+  animationEnabled = enabled;
+  document.body.dataset.animation = enabled ? "on" : "off";
+  toggleAnimationEl.textContent = enabled ? "Disable Animation" : "Enable Animation";
+  toggleAnimationEl.setAttribute("aria-pressed", String(enabled));
+  spriteScene.setEnabled(enabled);
 }
 
 function applySettings(settings: DaemonSettings): void {
@@ -578,7 +573,9 @@ function showMissingBridge(): void {
   }
 
   document.body.dataset.state = "starting";
-  spriteScene.playState("starting");
+  if (animationEnabled) {
+    spriteScene.playState("starting");
+  }
   statusEl.textContent = "Status: starting | start_mining request in progress";
   showAction("Starting mining request...");
   await runWithButtonState(button, async () => {
@@ -645,6 +642,11 @@ function showMissingBridge(): void {
   void refreshStatus();
 });
 
+toggleAnimationEl.addEventListener("click", () => {
+  setAnimationEnabled(!animationEnabled);
+  showAction(`Mining animation ${animationEnabled ? "enabled" : "disabled"}.`);
+});
+
 (document.getElementById("chooseMonerod") as HTMLButtonElement).addEventListener("click", async (event) => {
   const button = event.currentTarget as HTMLButtonElement;
   const api = getDaemonApi();
@@ -674,6 +676,7 @@ function showMissingBridge(): void {
 
 (async () => {
   statusEl.textContent = DEFAULT_STATUS;
+  setAnimationEnabled(animationEnabled);
   const api = getDaemonApi();
 
   if (!api) {

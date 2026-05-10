@@ -177,6 +177,7 @@ button:active { transform: translateY(2px); box-shadow: inset 0 -2px 0 rgba(0,0,
 button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 #startMining { color: #1a0900; background: linear-gradient(180deg, #ffc46b, var(--xmr)); border-color: #ffd88c; font-weight: 700; }
+#toggleAnimation[aria-pressed="false"] { border-color: var(--amber); color: var(--amber); }
 .button-row { display: flex; flex-wrap: wrap; gap: 9px; align-items: end; }
 .flash-success { animation: flashSuccess 360ms ease; }
 
@@ -221,9 +222,6 @@ body[data-state="mining"]      .readout-state { color: var(--green); }
 body[data-state="block-found"] .readout-state { color: var(--amber); }
 body[data-state="error"]       .readout-state { color: var(--red); }
 
-.scene-wrap { position: absolute; inset: 0; z-index: 2; }
-.legacy-scene { display: none; }
-
 .sprite-stage {
   position: absolute;
   inset: 0;
@@ -239,9 +237,23 @@ body[data-state="error"]       .readout-state { color: var(--red); }
   image-rendering: pixelated;
 }
 
-.mine-svg {
-  width: 100%; height: 100%;
-  image-rendering: pixelated; /* extra crispness for pixel art */
+body[data-animation="off"] .sprite-stage {
+  visibility: hidden;
+}
+
+body[data-animation="off"] .mine-stage::after {
+  content: "Animation paused";
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: grid;
+  place-items: center;
+  color: rgba(248,239,226,0.72);
+  background: rgba(3,4,5,0.28);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  pointer-events: none;
 }
 
 .stage-floor {
@@ -250,276 +262,11 @@ body[data-state="error"]       .readout-state { color: var(--red); }
   z-index: 3; pointer-events: none;
 }
 
-/* ═══════════════════════════════════════════════
-   STATE VISIBILITY
-═══════════════════════════════════════════════ */
-.s-idle, .s-mining, .s-found { opacity: 0; transition: opacity 0.4s ease; }
-
-body[data-state="idle"]    .s-idle,
-body[data-state="starting"] .s-idle,
-body[data-state="error"]    .s-idle { opacity: 1; }
-
-body[data-state="mining"]      .s-mining { opacity: 1; }
-body[data-state="block-found"] .s-found  { opacity: 1; }
-
-/* Ore ambient glow (mining + found) */
-body[data-state="mining"]      .ore-amb { animation: oreGlowPulse 1.5s ease-in-out infinite; }
-body[data-state="block-found"] .ore-amb { opacity: 0.8; }
-
-/* Hash rain */
-.hash-rain-svg { opacity: 0; transition: opacity 0.5s; }
-body[data-state="mining"] .hash-rain-svg { opacity: 1; }
-
-.hash-char { }
-body[data-state="mining"] .hash-char { animation: hashFall 5s linear infinite; }
-body[data-state="mining"] .hc2 { animation-delay: -1.8s; }
-body[data-state="mining"] .hc3 { animation-delay: -3.2s; }
-body[data-state="mining"] .hc4 { animation-delay: -0.9s; }
-body[data-state="mining"] .hc5 { animation-delay: -2.6s; }
-
-/* ═══════════════════════════════════════════════
-   TORCH FLAME — flickers with steps (Minecraft style)
-═══════════════════════════════════════════════ */
-.torch-flame {
-  animation: torchFlicker 1.6s steps(3, end) infinite;
-}
-.tf2 { animation-delay: -0.7s; }
-
-/* ═══════════════════════════════════════════════
-   IDLE ANIMATIONS
-═══════════════════════════════════════════════ */
-.idle-miner-mc { transform-origin: 270px 218px; }
-
-body[data-state="idle"]     .idle-miner-mc,
-body[data-state="starting"] .idle-miner-mc,
-body[data-state="error"]    .idle-miner-mc {
-  animation: idleBreath 4s ease-in-out infinite;
-}
-
-/* Hat lamp flickers on idle */
-body[data-state="idle"]     .s-idle circle[fill="#ffd060"],
-body[data-state="starting"] .s-idle circle[fill="#ffd060"],
-body[data-state="error"]    .s-idle circle[fill="#ffd060"] {
-  animation: lampPulse 3.2s ease-in-out infinite;
-}
-
-/* ═══════════════════════════════════════════════
-   MINING ANIMATIONS
-═══════════════════════════════════════════════ */
-
-/* Pickaxe arm swing — pivots at right shoulder (294, 154) */
-.mc-pickaxe-arm { transform-origin: 294px 154px; }
-
-body[data-state="mining"] .mc-pickaxe-arm {
-  animation: pickSwing 0.68s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
-}
-
-/* Miner body leans into the swing */
-body[data-state="mining"] .mining-miner-mc {
-  transform-origin: 270px 242px;
-  animation: minerLean 0.68s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
-}
-
-/* Ore block shudders on impact */
-body[data-state="mining"] .mining-ore-block {
-  animation: blockShudder 0.68s ease-out infinite;
-}
-
-/* Crack overlays: appear on impact, persist until next swing */
-body[data-state="mining"] .blk-crack-1 { animation: crackIn 0.68s ease-out infinite; }
-body[data-state="mining"] .blk-crack-2 { animation: crackIn2 0.68s ease-out infinite; }
-
-/* Chips fly off on impact */
-body[data-state="mining"] .c1 { animation: mcChip1 0.68s ease-out infinite; }
-body[data-state="mining"] .c2 { animation: mcChip2 0.68s ease-out infinite; animation-delay: 0.04s; }
-body[data-state="mining"] .c3 { animation: mcChip3 0.68s ease-out infinite; animation-delay: 0.02s; }
-body[data-state="mining"] .c4 { animation: mcChip4 0.68s ease-out infinite; animation-delay: 0.06s; }
-body[data-state="mining"] .c5 { animation: mcChip5 0.68s ease-out infinite; animation-delay: 0.03s; }
-body[data-state="mining"] .c6 { animation: mcChip1 0.68s ease-out infinite; animation-delay: 0.05s; }
-body[data-state="mining"] .c7 { animation: mcChip3 0.68s ease-out infinite; animation-delay: 0.07s; }
-.mc-chip { opacity: 0; }
-
-/* ═══════════════════════════════════════════════
-   BLOCK FOUND ANIMATIONS
-═══════════════════════════════════════════════ */
-
-/* Miner jumps */
-.jumping-miner-mc { transform-origin: 270px 244px; }
-body[data-state="block-found"] .jumping-miner-mc {
-  animation: mcJump 0.92s cubic-bezier(0.33,1,0.68,1) infinite;
-}
-
-/* Shadow shrinks as miner rises */
-body[data-state="block-found"] .mc-jump-shadow {
-  transform-origin: 270px 244px;
-  animation: mcShadow 0.92s cubic-bezier(0.33,1,0.68,1) infinite;
-}
-
-/* Block pieces fly apart */
-body[data-state="block-found"] .bp1 { animation: bpFly1 1.4s ease-out infinite; }
-body[data-state="block-found"] .bp2 { animation: bpFly2 1.4s ease-out infinite; animation-delay: -0.15s; }
-body[data-state="block-found"] .bp3 { animation: bpFly3 1.4s ease-out infinite; animation-delay: -0.08s; }
-
-/* Ore item drops float up then vanish */
-body[data-state="block-found"] .od1 { animation: oreFloat 1.6s ease-in-out infinite; }
-body[data-state="block-found"] .od2 { animation: oreFloat 1.6s ease-in-out infinite; animation-delay: -0.35s; }
-
-/* Gem pulses */
-body[data-state="block-found"] .gem-body  { animation: gemPulse 0.92s ease-in-out infinite; }
-body[data-state="block-found"] .gem-halo  { animation: gemHalo  0.92s ease-in-out infinite; }
-body[data-state="block-found"] .gem-halo2 { animation: gemHalo  0.92s ease-in-out infinite; animation-delay: 0.12s; }
-
-/* Pixel stars spin/pop */
-body[data-state="block-found"] .sp1 { animation: starSpin 1.4s steps(8, end) infinite; }
-body[data-state="block-found"] .sp2 { animation: starSpin 1.8s steps(8, end) infinite reverse; animation-delay: -0.3s; }
-body[data-state="block-found"] .sp3 { animation: starPop  0.9s steps(4, end) infinite; }
-body[data-state="block-found"] .sp4 { animation: starSpin 2.0s steps(8, end) infinite; animation-delay: -0.6s; }
-body[data-state="block-found"] .sp5 { animation: starPop  0.9s steps(4, end) infinite; animation-delay: 0.45s; }
-
-/* Coin display floats while mining, launches on found */
-body[data-state="mining"]      .coin-display { animation: coinBob  2.4s ease-in-out infinite; }
-body[data-state="block-found"] .coin-display { animation: coinSpin 1.8s ease-in-out infinite; }
-
-/* ═══════════════════════════════════════════════
-   KEYFRAMES
-═══════════════════════════════════════════════ */
-
-/* Torch — steps(3) mimics Minecraft's frame-based fire animation */
-@keyframes torchFlicker {
-  0%   { transform: scaleX(1)    scaleY(1)    translateY(0);   opacity: 1.0; }
-  33%  { transform: scaleX(0.72) scaleY(1.12) translateY(-3px); opacity: 0.88; }
-  66%  { transform: scaleX(1.20) scaleY(0.88) translateY(2px);  opacity: 0.78; }
-  100% { transform: scaleX(1)    scaleY(1)    translateY(0);   opacity: 1.0; }
-}
-
-@keyframes idleBreath {
-  0%,100% { transform: translateY(0) scaleY(1); }
-  45%     { transform: translateY(-2px) scaleY(1.012); }
-  75%     { transform: translateY(1px) scaleY(0.996); }
-}
-
-@keyframes lampPulse {
-  0%,100% { opacity: 0.9; }
-  50%     { opacity: 0.45; }
-}
-
-/* Pickaxe swing — fast down (impact at ~60%), slow raise back */
-@keyframes pickSwing {
-  0%        { transform: rotate(-80deg); }
-  48%       { transform: rotate(-80deg); }/* pause at top */
-  60%       { transform: rotate(30deg);  }/* slam down */
-  66%       { transform: rotate(34deg);  }/* impact hold */
-  100%      { transform: rotate(-80deg); }/* raise back */
-}
-
-@keyframes minerLean {
-  0%, 48%  { transform: rotate(0deg)  translateX(0); }
-  60%, 66% { transform: rotate(5deg)  translateX(5px); }
-  100%     { transform: rotate(0deg)  translateX(0); }
-}
-
-@keyframes blockShudder {
-  0%, 58%  { transform: translate(0,0); }
-  62%      { transform: translate(-4px, 2px); }
-  66%      { transform: translate(3px, -2px); }
-  72%      { transform: translate(-2px, 1px); }
-  100%     { transform: translate(0,0); }
-}
-
-@keyframes crackIn {
-  0%, 56%   { opacity: 0; }
-  62%, 100% { opacity: 1; }
-}
-
-@keyframes crackIn2 {
-  0%, 62%   { opacity: 0; }
-  70%, 100% { opacity: 0.75; }
-}
-
-/* Chip directions (each flies to a unique direction) */
-@keyframes mcChip1 { 0%,56%{transform:translate(0,0)rotate(0);opacity:0} 60%{transform:translate(-16px,-20px)rotate(-15deg);opacity:1} 100%{transform:translate(-34px,10px)rotate(-30deg);opacity:0} }
-@keyframes mcChip2 { 0%,56%{transform:translate(0,0)rotate(0);opacity:0} 60%{transform:translate(-28px,-28px)rotate(20deg);opacity:1} 100%{transform:translate(-52px,-8px)rotate(40deg);opacity:0} }
-@keyframes mcChip3 { 0%,56%{transform:translate(0,0)rotate(0);opacity:0} 60%{transform:translate(-10px,-36px)rotate(-10deg);opacity:1} 100%{transform:translate(-18px,12px)rotate(-20deg);opacity:0} }
-@keyframes mcChip4 { 0%,56%{transform:translate(0,0)rotate(0);opacity:0} 60%{transform:translate(-40px,-16px)rotate(12deg);opacity:1} 100%{transform:translate(-62px,6px)rotate(25deg);opacity:0} }
-@keyframes mcChip5 { 0%,56%{transform:translate(0,0)rotate(0);opacity:0} 60%{transform:translate(-20px,-44px)rotate(-8deg);opacity:1} 100%{transform:translate(-28px,-18px)rotate(-15deg);opacity:0} }
-
-/* Miner jump — bouncy arc with landing squish */
-@keyframes mcJump {
-  0%        { transform: translateY(0)   scaleY(1)    scaleX(1); }
-  18%       { transform: translateY(-62px) scaleY(1.06) scaleX(0.96); }
-  36%       { transform: translateY(-66px) scaleY(1.04) scaleX(0.97); }
-  54%       { transform: translateY(-48px) scaleY(1.02) scaleX(0.99); }
-  68%       { transform: translateY(-8px)  scaleY(0.94) scaleX(1.06); }
-  76%       { transform: translateY(6px)   scaleY(0.90) scaleX(1.10); }/* landing squish */
-  84%       { transform: translateY(-4px)  scaleY(1.04) scaleX(0.97); }
-  92%       { transform: translateY(2px)   scaleY(0.98) scaleX(1.02); }
-  100%      { transform: translateY(0)   scaleY(1)    scaleX(1); }
-}
-
-@keyframes mcShadow {
-  0%           { transform: scale(1);    opacity: 0.22; }
-  18%, 36%     { transform: scale(0.5);  opacity: 0.10; }
-  68%          { transform: scale(0.9);  opacity: 0.20; }
-  76%          { transform: scale(1.12); opacity: 0.28; }/* squish shadow spreads */
-  100%         { transform: scale(1);    opacity: 0.22; }
-}
-
-/* Block pieces fly outward like Minecraft block break */
-@keyframes bpFly1 { 0%{transform:translate(0,0)rotate(0);opacity:1} 55%{transform:translate(-40px,-55px)rotate(-25deg);opacity:1} 100%{transform:translate(-65px,30px)rotate(-48deg);opacity:0.4} }
-@keyframes bpFly2 { 0%{transform:translate(0,0)rotate(0);opacity:1} 55%{transform:translate(-60px,-38px)rotate(18deg);opacity:1}  100%{transform:translate(-90px,18px)rotate(32deg);opacity:0.3}  }
-@keyframes bpFly3 { 0%{transform:translate(0,0)rotate(0);opacity:1} 55%{transform:translate(40px,-48px)rotate(22deg);opacity:1}   100%{transform:translate(60px,24px)rotate(40deg);opacity:0.4}   }
-
-/* Ore item drops float up like Minecraft item drops */
-@keyframes oreFloat {
-  0%   { transform: translateY(0)   scale(1);    opacity: 1; }
-  30%  { transform: translateY(-20px) scale(1.08); opacity: 1; }
-  60%  { transform: translateY(-46px) scale(1.04); opacity: 0.85; }
-  85%  { transform: translateY(-68px) scale(0.88); opacity: 0.3; }
-  100% { transform: translateY(-80px) scale(0.7);  opacity: 0; }
-}
-
-/* Gem glow pulse */
-@keyframes gemPulse {
-  0%,100% { fill: rgba(105,232,240,0.08); }
-  50%     { fill: rgba(105,232,240,0.22); }
-}
-
-@keyframes gemHalo {
-  0%,100% { opacity: 0.14; transform: scale(1); }
-  50%     { opacity: 0.38; transform: scale(1.2); }
-}
-
-/* Pixel stars — steps make them feel like sprite animation */
-@keyframes starSpin {
-  from { transform: rotate(0deg)   scale(1); }
-  50%  { transform: rotate(180deg) scale(1.4); }
-  to   { transform: rotate(360deg) scale(1); }
-}
-
-@keyframes starPop {
-  0%,100% { transform: scale(0.6); opacity: 0.55; }
-  50%     { transform: scale(1.5); opacity: 1; }
-}
-
-/* Coin animations */
-@keyframes coinBob  { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
-@keyframes coinSpin { 0%{transform:translateY(0) scale(1)} 40%{transform:translateY(-24px) scale(1.12)} 100%{transform:translateY(0) scale(1)} }
-
-/* Ore glow pulse */
-@keyframes oreGlowPulse { 0%,100%{opacity:0} 50%{opacity:0.6} }
-
-/* Stage golden flash on block found */
+/* Keyframes used by current chrome and feedback states. */
 @keyframes stageFlash {
   0%   { box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -20px 50px rgba(0,0,0,0.5), 0 20px 52px rgba(0,0,0,0.4); }
   16%  { box-shadow: inset 0 0 0 2px rgba(255,200,87,0.65), inset 0 0 80px rgba(242,104,34,0.40), 0 0 44px rgba(255,200,87,0.28); }
   100% { box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -20px 50px rgba(0,0,0,0.5), 0 20px 52px rgba(0,0,0,0.4); }
-}
-
-/* Hash fall */
-@keyframes hashFall {
-  from  { transform: translateY(-28px); opacity: 0; }
-  15%,70% { opacity: 1; }
-  to    { transform: translateY(180px); opacity: 0; }
 }
 
 @keyframes pulseLight { 50% { opacity: 0.4; } }
@@ -529,9 +276,7 @@ body[data-state="block-found"] .coin-display { animation: coinSpin 1.8s ease-in-
   100% { box-shadow: 0 0 0 14px rgba(89,216,111,0); }
 }
 
-/* ═══════════════════════════════════════════════
-   METRICS
-═══════════════════════════════════════════════ */
+/* METRICS */
 .metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -544,6 +289,7 @@ body[data-state="block-found"] .coin-display { animation: coinSpin 1.8s ease-in-
   border: 2px solid #283240;
   border-radius: 14px;
   display: flex; flex-direction: column; gap: 6px;
+  min-width: 0;
   transition: border-color 0.4s;
 }
 
@@ -551,7 +297,15 @@ body[data-state="mining"]      .metric-card { border-color: rgba(89,216,111,0.2)
 body[data-state="block-found"] .metric-card { border-color: rgba(242,104,34,0.35); }
 
 .metric-label  { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-.metric-value  { font-size: 20px; color: var(--text); font-weight: 700; letter-spacing: -0.02em; }
+.metric-value  {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 
 body[data-state="mining"]      .metric-value { color: #a0f4b0; }
 body[data-state="block-found"] .metric-value { color: var(--amber); }

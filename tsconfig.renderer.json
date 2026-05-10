@@ -8,5 +8,5 @@
     "lib": ["ES2022", "DOM"],
     "outDir": "dist/renderer"
   },
-  "include": ["src/renderer/**/*.ts"]
+  "include": ["src/renderer/**/*.ts", "src/shared/**/*.d.ts"]
 }

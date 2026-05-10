@@ -10,5 +10,5 @@
     "types": ["node"],
     "outDir": "dist/main"
   },
-  "include": ["src/main/**/*.ts", "src/preload/**/*.ts"]
+  "include": ["src/main/**/*.ts", "src/preload/**/*.ts", "src/shared/**/*.d.ts"]
 }

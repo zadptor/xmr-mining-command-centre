@@ -11,28 +11,28 @@ Desktop application project to control Monero daemon mining from a graphical UI 
 
 ## Repo Status
 
-This repository is initialized and contains a starter structure with:
+This repository contains a wired Electron desktop app with:
 
-- Main process utilities in `src/main`
-- Renderer prototype in `src/renderer`
-- Initial Monero CLI wrapper (`src/main/monero-cli.ts`)
-- Pixel-style mining animation states (`idle`, `mining`, `block-found`)
+- Main process daemon RPC and IPC handlers in `src/main`
+- A preload IPC bridge in `src/preload`
+- Renderer controls and Pixi mining animation in `src/renderer`
+- Shared daemon API declarations in `src/shared`
 
-## Proposed Tech Stack
+## Tech Stack
 
 - Electron (desktop runtime)
-- React + TypeScript (renderer)
-- IPC bridge for secure command execution
-- Child process wrapper for daemon/CLI integration
+- TypeScript
+- PixiJS renderer animation
+- Typed IPC bridge for secure daemon actions
 
-## Next Build Steps
+## Commands
 
-1. Add dependencies (`electron`, `vite`, `react`, `typescript`, `@types/node`)
-2. Replace `dev` placeholder script with real Electron + Vite dev workflow
-3. Implement command catalog for daemon commands (start, stop, status, set options, show stats)
-4. Parse daemon output stream and map events to UI state updates
-5. Implement richer sprite-sheet pixel animations for mining and block-found states
-6. Add logs pane and command history in the UI
+```bash
+npm run build
+npm run typecheck
+npm run dev
+npm run dist:win
+```
 
 ## Security Notes
 
@@ -40,10 +40,8 @@ This repository is initialized and contains a starter structure with:
 - Use a strict allowlist of supported daemon commands and typed arguments.
 - Keep executable paths configurable in settings with validation.
 
-## Run (Current Placeholder)
+## Run
 
 ```bash
 npm run dev
 ```
-
-This currently prints a setup note until dependencies and Electron wiring are added.
