@@ -49,6 +49,9 @@ class MiningSpriteScene {
   private oreNodes: any[] = [];
   private activeOreNode: any;
   private oreGlow: any;
+  private celebrationLayer: any;
+  private celebrationText: any;
+  private confettiParticles: Array<{ shape: any; vx: number; vy: number; spin: number }> = [];
   private textures = new Map<string, any[]>();
   private state: SceneState = "idle";
   private phase: SpritePhase = "idle";
@@ -57,6 +60,7 @@ class MiningSpriteScene {
   private targetX = 0;
   private targetY = 0;
   private actionMs = 0;
+  private celebrationMs = 0;
   private ready = false;
   private lastDirection: SpriteDirection = "south";
   private nextMiningDirection: "east" | "west" = "east";
@@ -83,6 +87,7 @@ class MiningSpriteScene {
   }
 
   playState(state: SceneState): void {
+    const previousState = this.state;
     this.state = state;
 
     if (!this.enabled) {
@@ -93,7 +98,7 @@ class MiningSpriteScene {
       return;
     }
 
-    if (state === this.state && state === "mining" && this.phase !== "idle") {
+    if (state === previousState && state === "mining" && this.phase !== "idle") {
       return;
     }
 
@@ -101,6 +106,7 @@ class MiningSpriteScene {
       this.phase = "celebrating";
       this.centerSprite();
       this.play("celebrate:south", 0.16);
+      this.startCelebration();
       return;
     }
 
@@ -139,6 +145,8 @@ class MiningSpriteScene {
     this.app.stage.addChild(this.world);
     this.shadow = new PIXI.Graphics();
     this.app.stage.addChild(this.shadow);
+    this.celebrationLayer = new PIXI.Container();
+    this.app.stage.addChild(this.celebrationLayer);
 
     await this.loadTextures();
     this.buildMineBackground();
@@ -339,6 +347,8 @@ class MiningSpriteScene {
       this.sprite.y = this.groundY() - 16 + Math.sin(performance.now() / 150) * 8;
     }
 
+    this.updateCelebration(deltaMs);
+
     if (this.phase === "mining-action" || this.state === "block-found") {
       this.drawOreGlow();
     }
@@ -434,6 +444,92 @@ class MiningSpriteScene {
     this.oreGlow.clear();
     this.oreGlow.circle(this.activeOreNode.x + 26, this.activeOreNode.y + 16, this.phase === "mining-action" ? 74 : 46);
     this.oreGlow.fill({ color: isEastGems ? 0xffc247 : 0x44d9ff, alpha: pulse });
+  }
+
+  private startCelebration(): void {
+    if (!this.celebrationLayer) {
+      return;
+    }
+
+    this.celebrationLayer.removeChildren().forEach((child: any) => child.destroy());
+    this.confettiParticles = [];
+    this.celebrationMs = 2000;
+
+    this.celebrationText = new PIXI.Text({
+      text: "CONGRATULATIONS!!!\nBlock Found",
+      style: {
+        fontFamily: "\"Lucida Console\", \"Courier New\", monospace",
+        fontSize: Math.max(20, Math.min(42, this.host.clientWidth / 14)),
+        fontWeight: "900",
+        fill: 0xfff0a3,
+        stroke: { color: 0x5a2100, width: 6 },
+        align: "center",
+        dropShadow: {
+          color: 0x000000,
+          blur: 0,
+          angle: Math.PI / 4,
+          distance: 5,
+          alpha: 0.9
+        }
+      }
+    });
+    this.celebrationText.anchor.set(0.5);
+    this.celebrationText.x = this.host.clientWidth / 2;
+    this.celebrationText.y = Math.max(82, this.host.clientHeight * 0.28);
+    this.celebrationText.scale.set(0.2);
+    this.celebrationLayer.addChild(this.celebrationText);
+
+    const colors = [0xffc857, 0xf26822, 0x59d86f, 0x69e8f0, 0xffffff];
+    const centerX = this.host.clientWidth / 2;
+    const burstY = Math.max(90, this.host.clientHeight * 0.25);
+    for (let index = 0; index < 76; index += 1) {
+      const shape = new PIXI.Graphics();
+      const width = 5 + Math.random() * 8;
+      const height = 5 + Math.random() * 10;
+      shape.rect(-width / 2, -height / 2, width, height);
+      shape.fill(colors[index % colors.length]);
+      shape.x = centerX + (Math.random() - 0.5) * 72;
+      shape.y = burstY + (Math.random() - 0.5) * 36;
+      this.celebrationLayer.addChild(shape);
+      this.confettiParticles.push({
+        shape,
+        vx: (Math.random() - 0.5) * 520,
+        vy: -260 - Math.random() * 300,
+        spin: (Math.random() - 0.5) * 10
+      });
+    }
+  }
+
+  private updateCelebration(deltaMs: number): void {
+    if (!this.celebrationLayer || this.celebrationMs <= 0) {
+      return;
+    }
+
+    this.celebrationMs = Math.max(0, this.celebrationMs - deltaMs);
+    const seconds = deltaMs / 1000;
+    const elapsed = 2000 - this.celebrationMs;
+    const fade = Math.min(1, this.celebrationMs / 350);
+
+    if (this.celebrationText) {
+      const pop = Math.min(1, elapsed / 180);
+      this.celebrationText.scale.set(0.2 + pop * 0.8);
+      this.celebrationText.y = Math.max(82, this.host.clientHeight * 0.28) + Math.sin(performance.now() / 80) * 4;
+      this.celebrationText.alpha = fade;
+    }
+
+    for (const particle of this.confettiParticles) {
+      particle.vy += 620 * seconds;
+      particle.shape.x += particle.vx * seconds;
+      particle.shape.y += particle.vy * seconds;
+      particle.shape.rotation += particle.spin * seconds;
+      particle.shape.alpha = fade;
+    }
+
+    if (this.celebrationMs === 0) {
+      this.celebrationLayer.removeChildren().forEach((child: any) => child.destroy());
+      this.confettiParticles = [];
+      this.celebrationText = null;
+    }
   }
 }
 

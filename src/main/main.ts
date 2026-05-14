@@ -19,6 +19,9 @@ let lastHeight = 0;
 let lastStatus: UiStatus | null = null;
 const logLines: string[] = [];
 let logFilePath = "";
+const simulateBlockFound = process.argv.includes("--simulate-block-found");
+let lastWalletBlockSignature = "";
+let monerodStdoutScanBuffer = "";
 
 function log(level: LogLevel, source: "MAIN" | "UI", message: string): void {
   const line = `[${new Date().toISOString()}] [${level}] [${source}] ${message}`;
@@ -64,6 +67,55 @@ function getDaemonSettings(): DaemonSettings {
   };
 }
 
+function simulatedBlockFoundStatus(): UiStatus {
+  const baseHeight = lastStatus?.height && lastStatus.height > 0 ? lastStatus.height : 3250000;
+  return walletBlockFoundStatus(baseHeight + 1, undefined, `Simulated Block Found | height ${baseHeight} -> ${baseHeight + 1}`);
+}
+
+function walletBlockFoundStatus(height: number, difficulty: string | undefined, logLine: string): UiStatus {
+  return {
+    state: "block-found",
+    height,
+    targetHeight: lastStatus?.targetHeight ?? height,
+    difficulty: lastStatus?.difficulty ?? 1,
+    txPoolSize: lastStatus?.txPoolSize ?? 0,
+    peers: lastStatus?.peers ?? 0,
+    miningActive: true,
+    miningSpeed: lastStatus?.miningSpeed ?? 0,
+    miningThreads: lastStatus?.miningThreads ?? 2,
+    logLine: difficulty ? `${logLine} | difficulty=${difficulty}` : logLine,
+    lastUpdatedAt: new Date().toISOString()
+  };
+}
+
+function handleMonerodStdout(text: string): void {
+  const trimmedText = text.trim();
+  if (!trimmedText) {
+    return;
+  }
+
+  log("INFO", "MAIN", `monerod stdout: ${trimmedText}`);
+  monerodStdoutScanBuffer = `${monerodStdoutScanBuffer} ${trimmedText}`.slice(-4000);
+
+  const foundBlockMatch = /Found block\s+<([^>]+)>\s+at height\s+(\d+)\s+for difficulty:\s+(\d+)/i.exec(monerodStdoutScanBuffer);
+  if (!foundBlockMatch) {
+    return;
+  }
+
+  const [, blockId, heightText, difficulty] = foundBlockMatch;
+  const signature = `${blockId}:${heightText}:${difficulty}`;
+  if (signature === lastWalletBlockSignature) {
+    return;
+  }
+
+  lastWalletBlockSignature = signature;
+  const height = Number.parseInt(heightText, 10);
+  const status = walletBlockFoundStatus(height, difficulty, `Wallet found block ${blockId} at height ${height}`);
+  lastStatus = status;
+  log("INFO", "MAIN", `Wallet found block ${blockId} at height ${height}`);
+  mainWindow?.webContents.send("daemon:status", status);
+}
+
 function loadSettings(): void {
   if (!settingsFilePath || !fs.existsSync(settingsFilePath)) {
     configuredMonerodPath = findDefaultMonerodPath();
@@ -97,10 +149,11 @@ async function pollStatus(): Promise<UiStatus> {
     rpc.getInfo(),
     rpc.getMiningStatus()
   ]);
+  const previousHeight = lastHeight;
   const state: UiStatus["state"] = miningStatus.active ? "mining" : "idle";
 
-  if (miningStatus.active && lastHeight > 0 && info.height > lastHeight) {
-    log("INFO", "MAIN", `New block height detected: ${lastHeight} -> ${info.height}`);
+  if (previousHeight > 0 && info.height > previousHeight) {
+    log("INFO", "MAIN", `New block height observed: ${previousHeight} -> ${info.height}`);
   }
 
   lastHeight = info.height;
@@ -170,10 +223,7 @@ async function ensureDaemonRunning(): Promise<void> {
   });
 
   managedDaemon.stdout.on("data", (chunk: Buffer) => {
-    const text = chunk.toString("utf8").trim();
-    if (text) {
-      log("INFO", "MAIN", `monerod stdout: ${text}`);
-    }
+    handleMonerodStdout(chunk.toString("utf8"));
   });
 
   managedDaemon.stderr.on("data", (chunk: Buffer) => {
@@ -222,6 +272,13 @@ function createWindow(): void {
   mainWindow.loadFile(indexPath);
   mainWindow.webContents.on("did-finish-load", () => {
     log("INFO", "MAIN", "Renderer finished loading.");
+    if (simulateBlockFound) {
+      setTimeout(() => {
+        const status = simulatedBlockFoundStatus();
+        log("INFO", "MAIN", "Sending simulated block-found status.");
+        mainWindow?.webContents.send("daemon:status", status);
+      }, 1000);
+    }
   });
   mainWindow.webContents.on("console-message", (_event, level, message, line, sourceId) => {
     log("INFO", "UI", `console level=${level} ${sourceId}:${line} ${message}`);

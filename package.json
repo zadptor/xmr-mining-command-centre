@@ -9,6 +9,7 @@
     "dist:win": "npm run build && electron-packager . \"Monero Mine Central\" --platform=win32 --arch=x64 --out=release-current --overwrite --ignore=\"^/(src|docs|scripts|release|release-build|release-app|release-packaged|release-final|release-current|\\.git|\\.idea)$\"",
     "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
     "dev": "npm run build && electron .",
+    "dev:block-found": "npm run build && electron . --simulate-block-found",
     "start": "electron ."
   },
   "keywords": [
